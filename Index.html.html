@@ -1,0 +1,2903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AccounTally Pro</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap');
+:root{--bg:#f0f2f5;--sidebar:#0f172a;--primary:#2563eb;--pd:#1d4ed8;--ok:#059669;--bad:#dc2626;--warn:#d97706;--sur:#fff;--bdr:#e2e8f0;--txt:#1e293b;--tm:#64748b;--tl:#94a3b8;--mono:'IBM Plex Mono',monospace;--font:'IBM Plex Sans',sans-serif;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font);background:var(--bg);color:var(--txt);height:100vh;display:flex;overflow:hidden;font-size:13px;}
+.hidden{display:none!important;}
+
+/* ── LOGIN ── */
+#login-wrap{position:fixed;inset:0;background:linear-gradient(135deg,#0f172a 0%,#1e3a6e 60%,#0f172a 100%);display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:0;}
+.login-box{background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.13);border-radius:20px;padding:40px 36px;width:380px;max-width:95vw;}
+.login-logo{text-align:center;margin-bottom:28px;}
+.login-logo-icon{font-size:42px;}
+.login-logo-name{font-size:24px;font-weight:700;color:#fff;letter-spacing:-0.5px;margin-top:6px;}
+.login-logo-sub{color:#93c5fd;font-size:12px;margin-top:3px;}
+.login-field{margin-bottom:16px;}
+.login-label{font-size:11px;font-weight:600;color:#94a3b8;margin-bottom:6px;display:block;}
+.login-input{width:100%;padding:11px 14px;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.15);border-radius:10px;color:#fff;font-size:13px;font-family:var(--font);outline:none;transition:border .15s;}
+.login-input:focus{border-color:#3b82f6;background:rgba(59,130,246,.1);}
+.login-input::placeholder{color:#475569;}
+.login-btn{width:100%;padding:12px;background:linear-gradient(135deg,#2563eb,#3b82f6);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:var(--font);transition:all .15s;margin-top:4px;}
+.login-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(37,99,235,.4);}
+.login-error{background:rgba(220,38,38,.15);border:1px solid rgba(220,38,38,.3);border-radius:8px;padding:10px 14px;color:#fca5a5;font-size:12px;margin-bottom:14px;display:none;}
+.login-footer{color:#334155;font-size:11px;text-align:center;margin-top:20px;}
+.login-switch{color:#60a5fa;cursor:pointer;text-decoration:underline;}
+.db-badge{background:rgba(5,150,105,.15);border:1px solid rgba(5,150,105,.25);border-radius:30px;padding:6px 16px;color:#34d399;font-size:11px;font-weight:600;margin-bottom:24px;}
+
+/* ── SIDEBAR ── */
+#sidebar{width:220px;background:var(--sidebar);color:#fff;display:flex;flex-direction:column;flex-shrink:0;transition:width .2s;overflow:hidden;}
+#sidebar.col{width:52px;}
+.slg{padding:14px;border-bottom:1px solid #1e293b;display:flex;align-items:center;gap:10px;min-height:58px;}
+.logo-n{font-size:13px;font-weight:700;color:#e2e8f0;white-space:nowrap;}
+.logo-s{font-size:10px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:145px;}
+.stog{background:none;border:none;color:#64748b;cursor:pointer;padding:6px;font-size:18px;flex-shrink:0;line-height:1;}
+.stog:hover{color:#fff;}
+.snav{flex:1;padding:8px 0;overflow-y:auto;}
+.ni{display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;color:#94a3b8;font-size:12.5px;font-weight:500;transition:all .15s;white-space:nowrap;border-left:3px solid transparent;}
+.ni:hover{background:#1e293b;color:#e2e8f0;}
+.ni.act{background:#1e3a6e;color:#fff;border-left-color:#2563eb;}
+.nico{font-size:15px;flex-shrink:0;width:20px;text-align:center;}
+.nsec{padding:12px 14px 4px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#334155;white-space:nowrap;}
+#sidebar.col .nsec,#sidebar.col .nlb,#sidebar.col .ltxt{display:none;}
+
+/* ── MAIN ── */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+#topbar{background:var(--sur);border-bottom:1px solid var(--bdr);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,.05);}
+.pg-title{font-size:15px;font-weight:700;color:var(--txt);}
+.tbr{display:flex;align-items:center;gap:8px;}
+.fy-badge{background:#eff6ff;color:#2563eb;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:1px solid #bfdbfe;}
+.save-status{font-size:10px;font-weight:600;padding:3px 10px;border-radius:20px;}
+.save-ok{background:#ecfdf5;color:#059669;border:1px solid #a7f3d0;}
+.save-ing{background:#fefce8;color:#b45309;border:1px solid #fde68a;}
+.usr-badge{background:#f1f5f9;color:#475569;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;cursor:pointer;}
+.usr-badge:hover{background:#e2e8f0;}
+#content{flex:1;overflow-y:auto;padding:18px 22px;}
+
+/* ── CARDS & COMPONENTS ── */
+.card{background:var(--sur);border:1px solid var(--bdr);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+.ch{background:#0f172a;color:#fff;padding:12px 18px;font-weight:700;font-size:13px;}
+.sg{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}
+.sc{border-radius:12px;padding:16px;color:#fff;position:relative;overflow:hidden;}
+.sc::after{content:'';position:absolute;right:-8px;top:-8px;width:72px;height:72px;background:rgba(255,255,255,.07);border-radius:50%;}
+.sl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;opacity:.8;}
+.sv{font-size:20px;font-weight:700;margin-top:5px;font-family:var(--mono);}
+.ss{font-size:10px;opacity:.65;margin-top:2px;}
+.sc-b{background:linear-gradient(135deg,#2563eb,#3b82f6);}
+.sc-g{background:linear-gradient(135deg,#059669,#10b981);}
+.sc-r{background:linear-gradient(135deg,#dc2626,#ef4444);}
+.sc-p{background:linear-gradient(135deg,#7c3aed,#8b5cf6);}
+.sc-o{background:linear-gradient(135deg,#d97706,#f59e0b);}
+
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600;font-family:var(--font);transition:all .15s;white-space:nowrap;}
+.btn-p{background:var(--primary);color:#fff;}.btn-p:hover{background:var(--pd);}
+.btn-s{background:var(--ok);color:#fff;}.btn-s:hover{background:#047857;}
+.btn-d{background:var(--bad);color:#fff;}.btn-d:hover{background:#b91c1c;}
+.btn-g{background:var(--bdr);color:var(--txt);}.btn-g:hover{background:#cbd5e1;}
+.btn-w{background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;}.btn-w:hover{background:#ffedd5;}
+.btn-sm{padding:4px 9px;font-size:11px;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+
+.tb{display:flex;align-items:center;gap:9px;margin-bottom:12px;flex-wrap:wrap;}
+.tg{display:flex;gap:3px;background:var(--bdr);padding:3px;border-radius:8px;}
+.t{padding:5px 11px;border-radius:6px;border:none;cursor:pointer;font-size:11px;font-weight:600;background:none;color:var(--tm);font-family:var(--font);transition:all .15s;}
+.t.act{background:#fff;color:var(--primary);box-shadow:0 1px 3px rgba(0,0,0,.1);}
+.t:hover:not(.act){color:var(--txt);}
+
+.si{padding:7px 12px;border:1px solid var(--bdr);border-radius:8px;font-size:12px;font-family:var(--font);outline:none;transition:border .15s;min-width:180px;}
+.si:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.08);}
+
+.tbl{width:100%;border-collapse:collapse;}
+.tbl th{background:#0f172a;color:#e2e8f0;padding:9px 13px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+.tbl td{padding:9px 13px;border-bottom:1px solid var(--bdr);font-size:12.5px;vertical-align:middle;}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr:hover td{background:#f8fafc;}
+.tbl tr.alt td{background:#fafafa;}.tbl tr.alt:hover td{background:#f0f4ff;}
+.tf td{background:#0f172a!important;color:#fff!important;font-weight:700!important;}
+
+.mono{font-family:var(--mono);}.tr{text-align:right;}.tc{text-align:center;}
+.tb-{color:#2563eb;}.tg-{color:#059669;}.tr-{color:#dc2626;}.tm-{color:var(--tm);}
+
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap;}
+.bb{background:#eff6ff;color:#1d4ed8;}.bg-{background:#ecfdf5;color:#059669;}
+.br{background:#fef2f2;color:#dc2626;}.by{background:#fefce8;color:#b45309;}
+.bp{background:#faf5ff;color:#7c3aed;}.bgr{background:#f1f5f9;color:#475569;}
+.bo{background:#fff7ed;color:#c2410c;}
+
+.fg{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:11px;}
+.fgr{display:flex;flex-direction:column;gap:4px;}
+.fl{font-size:11px;font-weight:600;color:var(--tm);}
+.fc{padding:8px 10px;border:1px solid var(--bdr);border-radius:8px;font-size:12.5px;font-family:var(--font);outline:none;transition:border .15s;background:#fff;width:100%;}
+.fc:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.08);}
+.fc:disabled{background:#f8fafc;color:var(--tm);}
+
+.fp{background:#f8fafc;border:1px solid var(--bdr);border-radius:12px;padding:18px;margin-bottom:14px;}
+
+.al{padding:10px 13px;border-radius:8px;font-size:12px;margin-bottom:10px;}
+.al-s{background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;}
+.al-d{background:#fef2f2;color:#991b1b;border:1px solid #fca5a5;}
+.al-w{background:#fefce8;color:#92400e;border:1px solid #fde68a;}
+.al-i{background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;}
+
+.et{width:100%;border-collapse:collapse;border:1px solid var(--bdr);border-radius:8px;overflow:hidden;}
+.et th{background:#334155;color:#e2e8f0;padding:8px 10px;font-size:11px;font-weight:700;text-align:left;}
+.et td{padding:6px 8px;border-bottom:1px solid var(--bdr);}
+.et tfoot td{background:#f8fafc;font-weight:700;padding:8px 10px;}
+.et tfoot.bal td{background:#ecfdf5;color:#065f46;}
+.et tfoot.unbal td{background:#fef2f2;color:#991b1b;}
+
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px;}
+.mo.hidden{display:none;}
+.mb{background:#fff;border-radius:16px;max-width:780px;width:100%;max-height:92vh;overflow-y:auto;box-shadow:0 25px 60px rgba(0,0,0,.3);}
+.mh{background:#0f172a;color:#fff;padding:15px 20px;display:flex;align-items:center;justify-content:space-between;border-radius:16px 16px 0 0;}
+.mbdy{padding:20px;}
+.mc{background:none;border:none;color:#94a3b8;cursor:pointer;font-size:20px;line-height:1;}
+.mc:hover{color:#fff;}
+
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+
+.rp{background:var(--sur);border:1px solid var(--bdr);border-radius:12px;padding:18px;}
+.rst{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--tl);margin-bottom:7px;margin-top:14px;}
+.rr{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed var(--bdr);}
+.rrl{color:var(--txt);padding-left:12px;}
+.rrv{font-weight:600;font-family:var(--mono);}
+.rtot{display:flex;justify-content:space-between;padding:9px 12px;border-radius:8px;font-weight:700;margin-top:7px;}
+.rt-b{background:#eff6ff;color:#1e40af;}.rt-g{background:#ecfdf5;color:#065f46;}.rt-r{background:#fef2f2;color:#991b1b;}
+.rg{background:#0f172a;color:#fff;border-radius:10px;padding:12px 16px;display:flex;justify-content:space-between;font-weight:700;margin-top:10px;font-size:13px;}
+
+.qg{display:grid;grid-template-columns:repeat(6,1fr);gap:9px;}
+.ql{display:flex;flex-direction:column;align-items:center;gap:7px;padding:14px 7px;border-radius:12px;border:2px solid;cursor:pointer;background:none;font-family:var(--font);transition:all .15s;}
+.ql:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.1);}
+.qi{font-size:20px;}.qlb{font-size:10px;font-weight:700;text-align:center;}
+.q1{border-color:#bfdbfe;color:#1d4ed8;background:#eff6ff;}
+.q2{border-color:#a7f3d0;color:#065f46;background:#ecfdf5;}
+.q3{border-color:#ddd6fe;color:#5b21b6;background:#f5f3ff;}
+.q4{border-color:#fed7aa;color:#9a3412;background:#fff7ed;}
+.q5{border-color:#fca5a5;color:#991b1b;background:#fef2f2;}
+.q6{border-color:#99f6e4;color:#0f766e;background:#f0fdfa;}
+.q7{border-color:#e9d5ff;color:#6b21a8;background:#faf5ff;}
+.q8{border-color:#bae6fd;color:#0369a1;background:#f0f9ff;}
+
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px;}
+
+/* ── DUE DATE COLORS ── */
+.due-over{color:#dc2626;font-weight:700;}
+.due-warn{color:#d97706;font-weight:700;}
+.due-ok{color:#059669;}
+.due-badge-over{background:#fef2f2;color:#991b1b;border:1px solid #fca5a5;}
+.due-badge-warn{background:#fefce8;color:#92400e;border:1px solid #fde68a;}
+.due-badge-ok{background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;}
+
+/* ── SVG CHART ── */
+.chart-legend{display:flex;gap:14px;margin-bottom:10px;font-size:11px;font-weight:600;}
+.leg-dot{width:10px;height:10px;border-radius:2px;display:inline-block;margin-right:4px;}
+.chart-wrap{background:#fff;border-radius:12px;border:1px solid var(--bdr);padding:14px;overflow:hidden;}
+
+/* ── PRINT / PDF ── */
+@media print{
+  #login-wrap,#sidebar,#topbar,.tb,.no-print{display:none!important;}
+  #content{padding:0;}
+  body{height:auto;overflow:visible;}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN ══ -->
+<div id="login-wrap">
+  <div class="db-badge">🔐 IndexedDB Permanent Storage — Data never lost</div>
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-icon">📊</div>
+      <div class="login-logo-name">AccounTally Pro</div>
+      <div class="login-logo-sub">Professional Accounting Software</div>
+    </div>
+    <div class="login-error" id="login-err"></div>
+    <div id="login-form-wrap">
+      <div class="login-field">
+        <label class="login-label">Username</label>
+        <input class="login-input" id="li-user" placeholder="Enter username" autocomplete="username">
+      </div>
+      <div class="login-field">
+        <label class="login-label">Password</label>
+        <input class="login-input" id="li-pass" type="password" placeholder="Enter password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <button class="login-btn" onclick="doLogin()">Sign In →</button>
+    </div>
+    <div id="setup-form-wrap" class="hidden">
+      <div class="al al-i" style="margin-bottom:14px;">👋 First launch — create your admin account</div>
+      <div class="login-field">
+        <label class="login-label">Company Name</label>
+        <input class="login-input" id="su-company" placeholder="e.g. My Business Pvt. Ltd." value="My Business Pvt. Ltd.">
+      </div>
+      <div class="login-field">
+        <label class="login-label">Admin Username</label>
+        <input class="login-input" id="su-user" placeholder="admin">
+      </div>
+      <div class="login-field">
+        <label class="login-label">Password</label>
+        <input class="login-input" id="su-pass" type="password" placeholder="Min 4 characters">
+      </div>
+      <div class="login-field">
+        <label class="login-label">Confirm Password</label>
+        <input class="login-input" id="su-pass2" type="password" placeholder="Re-enter password">
+      </div>
+      <button class="login-btn" onclick="doSetup()">Create Account & Start →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app" class="hidden" style="display:flex;height:100vh;overflow:hidden;">
+  <nav id="sidebar">
+    <div class="slg">
+      <button class="stog" onclick="toggleSidebar()">☰</button>
+      <div class="ltxt">
+        <div class="logo-n" id="sb-company">My Business</div>
+        <div class="logo-s" id="sb-fy">FY 2025-26</div>
+      </div>
+    </div>
+    <div class="snav">
+      <div class="nsec">Main</div>
+      <div class="ni act" id="nav-dashboard" onclick="navigate('dashboard')"><span class="nico">🏠</span><span class="nlb">Dashboard</span></div>
+      <div class="nsec">Masters</div>
+      <div class="ni" id="nav-accounts" onclick="navigate('accounts')"><span class="nico">📋</span><span class="nlb">Chart of Accounts</span></div>
+      <div class="ni" id="nav-items" onclick="navigate('items')"><span class="nico">📦</span><span class="nlb">Item Master (HSN/SAC)</span></div>
+      <div class="ni" id="nav-vendors" onclick="navigate('vendors')"><span class="nico">🏭</span><span class="nlb">Vendors / Suppliers</span></div>
+      <div class="ni" id="nav-debtors" onclick="navigate('debtors')"><span class="nico">🤝</span><span class="nlb">Customers / Debtors</span></div>
+      <div class="nsec">Transactions</div>
+      <div class="ni" id="nav-vouchers" onclick="navigate('vouchers')"><span class="nico">📝</span><span class="nlb">Voucher Entry</span></div>
+      <div class="ni" id="nav-advances" onclick="navigate('advances')"><span class="nico">💰</span><span class="nlb">Advance Payments</span></div>
+      <div class="nsec">Books</div>
+      <div class="ni" id="nav-daybook" onclick="navigate('daybook')"><span class="nico">📅</span><span class="nlb">Day Book</span></div>
+      <div class="ni" id="nav-cashbook" onclick="navigate('cashbook')"><span class="nico">💵</span><span class="nlb">Cash Book</span></div>
+      <div class="ni" id="nav-ledger" onclick="navigate('ledger')"><span class="nico">📖</span><span class="nlb">Ledger</span></div>
+      <div class="ni" id="nav-bankrecon" onclick="navigate('bankrecon')"><span class="nico">🏦</span><span class="nlb">Bank Reconciliation</span></div>
+      <div class="nsec">Reports</div>
+      <div class="ni" id="nav-trial" onclick="navigate('trial')"><span class="nico">⚖️</span><span class="nlb">Trial Balance</span></div>
+      <div class="ni" id="nav-pnl" onclick="navigate('pnl')"><span class="nico">📊</span><span class="nlb">Profit & Loss</span></div>
+      <div class="ni" id="nav-balance" onclick="navigate('balance')"><span class="nico">🏗</span><span class="nlb">Balance Sheet</span></div>
+      <div class="ni" id="nav-cashflow" onclick="navigate('cashflow')"><span class="nico">💸</span><span class="nlb">Cash Flow (AS-3)</span></div>
+      <div class="ni" id="nav-gst" onclick="navigate('gst')"><span class="nico">🧾</span><span class="nlb">GST Reports</span></div>
+      <div class="ni" id="nav-tds" onclick="navigate('tds')"><span class="nico">📑</span><span class="nlb">TDS Reports</span></div>
+      <div class="nsec">Data</div>
+      <div class="ni" id="nav-import" onclick="navigate('import')"><span class="nico">🔄</span><span class="nlb">Excel Import/Export</span></div>
+      <div class="nsec">Admin</div>
+      <div class="ni" id="nav-settings" onclick="navigate('settings')"><span class="nico">⚙️</span><span class="nlb">Settings</span></div>
+    </div>
+  </nav>
+  <div id="main">
+    <header id="topbar">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span id="pg-title" class="pg-title">🏠 Dashboard</span>
+      </div>
+      <div class="tbr">
+        <span id="save-ind" class="save-status save-ok">✓ Saved</span>
+        <span class="fy-badge" id="top-fy">FY 2025-26</span>
+        <span class="usr-badge" id="usr-btn" onclick="showUserMenu()">👤 Admin ▾</span>
+      </div>
+    </header>
+    <div id="content"></div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="mo hidden" id="modal">
+  <div class="mb">
+    <div class="mh"><span id="mtitle">Modal</span><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mbdy" id="mbody"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ══════════════════════════════════════════════════════════════════
+//  CONSTANTS & DEFAULTS
+// ══════════════════════════════════════════════════════════════════
+const VT = ['Receipt','Payment','Sales','Purchase','Journal','Contra','Debit Note','Credit Note'];
+const AT = ['Asset','Liability','Income','Expense','Capital'];
+const AG = {
+  Asset:    ['Cash & Bank','Sundry Debtors','Stock-in-Hand','Fixed Assets','Loans & Advances','Current Assets','Advance to Suppliers'],
+  Liability:['Sundry Creditors','Duties & Taxes','Loans (Liability)','Current Liabilities','Advance from Customers','TDS Payable'],
+  Income:   ['Sales Accounts','Direct Income','Indirect Income','Service Income'],
+  Expense:  ['Purchase Accounts','Direct Expenses','Indirect Expenses','COGS'],
+  Capital:  ['Capital Account','Reserves & Surplus','Retained Earnings'],
+};
+
+// GST rates and TDS sections per Indian Tax Law
+const GST_RATES = [0,5,12,18,28];
+const GST_TYPES = ['CGST+SGST (Intra-state)','IGST (Inter-state)','Exempt','Composition'];
+const TDS_SECTIONS = [
+  {code:'194C',desc:'Contractor / Sub-contractor',rate:1,thresholdSingle:30000,thresholdYearly:100000},
+  {code:'194J',desc:'Professional / Technical Services',rate:10,thresholdSingle:30000,thresholdYearly:30000},
+  {code:'194I',desc:'Rent',rate:10,thresholdSingle:240000,thresholdYearly:240000},
+  {code:'194A',desc:'Interest (other than securities)',rate:10,thresholdSingle:40000,thresholdYearly:40000},
+  {code:'194H',desc:'Commission / Brokerage',rate:5,thresholdSingle:15000,thresholdYearly:15000},
+  {code:'194D',desc:'Insurance Commission',rate:5,thresholdSingle:15000,thresholdYearly:15000},
+  {code:'194B',desc:'Winnings from Lottery',rate:30,thresholdSingle:10000,thresholdYearly:10000},
+  {code:'194Q',desc:'Purchase of Goods',rate:0.1,thresholdSingle:5000000,thresholdYearly:5000000},
+  {code:'194R',desc:'Perquisites / Benefits',rate:10,thresholdSingle:20000,thresholdYearly:20000},
+];
+const INDIAN_STATES = ['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal','Delhi','Jammu & Kashmir','Ladakh','Puducherry','Chandigarh','Dadra & Nagar Haveli','Daman & Diu','Lakshadweep','Andaman & Nicobar'];
+
+const DEFAULT_STATE = {
+  company:'My Company Pvt. Ltd.',fy:'2025-26',fyStart:'2025-04-01',fyEnd:'2026-03-31',
+  gstin:'',companyState:'Maharashtra',
+  accounts:[
+    // Assets
+    {id:'1001',name:'Cash in Hand',group:'Cash & Bank',type:'Asset',nature:'Dr',balance:0},
+    {id:'1002',name:'Bank Account',group:'Cash & Bank',type:'Asset',nature:'Dr',balance:0},
+    {id:'1003',name:'Accounts Receivable',group:'Sundry Debtors',type:'Asset',nature:'Dr',balance:0},
+    {id:'1004',name:'Inventory / Stock',group:'Stock-in-Hand',type:'Asset',nature:'Dr',balance:0},
+    {id:'1005',name:'Fixed Assets',group:'Fixed Assets',type:'Asset',nature:'Dr',balance:0},
+    {id:'1006',name:'Input CGST',group:'Current Assets',type:'Asset',nature:'Dr',balance:0},
+    {id:'1007',name:'Input SGST',group:'Current Assets',type:'Asset',nature:'Dr',balance:0},
+    {id:'1008',name:'Input IGST',group:'Current Assets',type:'Asset',nature:'Dr',balance:0},
+    {id:'1009',name:'Advance to Suppliers',group:'Advance to Suppliers',type:'Asset',nature:'Dr',balance:0},
+    // Liabilities
+    {id:'2001',name:'Accounts Payable',group:'Sundry Creditors',type:'Liability',nature:'Cr',balance:0},
+    {id:'2002',name:'Output CGST',group:'Duties & Taxes',type:'Liability',nature:'Cr',balance:0},
+    {id:'2003',name:'Output SGST',group:'Duties & Taxes',type:'Liability',nature:'Cr',balance:0},
+    {id:'2004',name:'Output IGST',group:'Duties & Taxes',type:'Liability',nature:'Cr',balance:0},
+    {id:'2005',name:'TDS Payable',group:'Duties & Taxes',type:'Liability',nature:'Cr',balance:0},
+    {id:'2006',name:'Advance from Customers',group:'Advance from Customers',type:'Liability',nature:'Cr',balance:0},
+    {id:'2007',name:'Bank Loan / OD',group:'Loans (Liability)',type:'Liability',nature:'Cr',balance:0},
+    {id:'2008',name:'GST Payable',group:'Duties & Taxes',type:'Liability',nature:'Cr',balance:0},
+    // Income
+    {id:'3001',name:'Sales Revenue',group:'Sales Accounts',type:'Income',nature:'Cr',balance:0},
+    {id:'3002',name:'Service Income',group:'Service Income',type:'Income',nature:'Cr',balance:0},
+    {id:'3003',name:'Other Income',group:'Indirect Income',type:'Income',nature:'Cr',balance:0},
+    // Expenses
+    {id:'4001',name:'Purchases',group:'Purchase Accounts',type:'Expense',nature:'Dr',balance:0},
+    {id:'4002',name:'Salaries & Wages',group:'Indirect Expenses',type:'Expense',nature:'Dr',balance:0},
+    {id:'4003',name:'Rent Expense',group:'Indirect Expenses',type:'Expense',nature:'Dr',balance:0},
+    {id:'4004',name:'Electricity & Utilities',group:'Indirect Expenses',type:'Expense',nature:'Dr',balance:0},
+    {id:'4005',name:'Office Expenses',group:'Indirect Expenses',type:'Expense',nature:'Dr',balance:0},
+    {id:'4006',name:'Marketing & Advertising',group:'Indirect Expenses',type:'Expense',nature:'Dr',balance:0},
+    {id:'4007',name:'Bank Charges',group:'Indirect Expenses',type:'Expense',nature:'Dr',balance:0},
+    {id:'4008',name:'Depreciation',group:'Indirect Expenses',type:'Expense',nature:'Dr',balance:0},
+    // Capital
+    {id:'5001',name:"Owner's Capital",group:'Capital Account',type:'Capital',nature:'Cr',balance:0},
+    {id:'5002',name:'Retained Earnings',group:'Reserves & Surplus',type:'Capital',nature:'Cr',balance:0},
+  ],
+  vouchers:[],
+  vendors:[],
+  debtors:[],
+  items:[],
+  bankStatements:[],
+  advances:[],
+};
+
+// ══ DB ══
+const DB = {
+  _db:null,
+  open(){
+    return new Promise((res,rej)=>{
+      const r=indexedDB.open('accountally_pro_v4',1);
+      r.onupgradeneeded=e=>{
+        const db=e.target.result;
+        ['data','users'].forEach(s=>{ if(!db.objectStoreNames.contains(s)) db.createObjectStore(s); });
+      };
+      r.onsuccess=e=>{this._db=e.target.result;res();};
+      r.onerror=()=>rej(r.error);
+    });
+  },
+  get(store,key){
+    return new Promise((res,rej)=>{
+      const r=this._db.transaction(store,'readonly').objectStore(store).get(key);
+      r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);
+    });
+  },
+  set(store,key,val){
+    return new Promise((res,rej)=>{
+      const r=this._db.transaction(store,'readwrite').objectStore(store).put(val,key);
+      r.onsuccess=()=>res(); r.onerror=()=>rej(r.error);
+    });
+  },
+  getAll(store){
+    return new Promise((res,rej)=>{
+      const r=this._db.transaction(store,'readonly').objectStore(store).getAll();
+      r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);
+    });
+  },
+  del(store,key){
+    return new Promise((res,rej)=>{
+      const r=this._db.transaction(store,'readwrite').objectStore(store).delete(key);
+      r.onsuccess=()=>res(); r.onerror=()=>rej(r.error);
+    });
+  }
+};
+
+// ══ AUTH ══
+async function sha256(str){
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+let currentUser=null;
+
+async function doLogin(){
+  const u=document.getElementById('li-user').value.trim();
+  const p=document.getElementById('li-pass').value;
+  if(!u||!p){showLoginErr('Please enter username and password.');return;}
+  const users=await DB.getAll('users');
+  const h=await sha256(p);
+  const found=users.find(x=>x.username===u&&x.passwordHash===h);
+  if(!found){showLoginErr('Invalid username or password.');return;}
+  currentUser=found;
+  document.getElementById('login-wrap').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('usr-btn').textContent=`👤 ${found.username} ▾`;
+  navigate('dashboard');
+}
+
+async function doSetup(){
+  const co=document.getElementById('su-company').value.trim();
+  const u=document.getElementById('su-user').value.trim();
+  const p=document.getElementById('su-pass').value;
+  const p2=document.getElementById('su-pass2').value;
+  if(!co||!u||!p){showLoginErr('All fields required.');return;}
+  if(p!==p2){showLoginErr('Passwords do not match.');return;}
+  if(p.length<4){showLoginErr('Password must be at least 4 characters.');return;}
+  const h=await sha256(p);
+  const user={id:'u1',username:u,passwordHash:h,role:'admin'};
+  await DB.set('users',u,user);
+  // init state with company name
+  const gstin2=(eid('su-gstin')?.value||'').toUpperCase().trim();
+  const s=JSON.parse(JSON.stringify(DEFAULT_STATE));
+  s.company=co;s.gstin=gstin2;
+  state=s;
+  await saveState();
+  currentUser=user;
+  document.getElementById('login-wrap').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('usr-btn').textContent=`👤 ${u} ▾`;
+  document.getElementById('sb-company').textContent=co;
+  navigate('dashboard');
+}
+
+function showLoginErr(msg){
+  const el=document.getElementById('login-err');
+  el.textContent=msg; el.style.display='block';
+  setTimeout(()=>el.style.display='none',3500);
+}
+
+function showUserMenu(){
+  openModal('User Menu',`
+    <p style="color:var(--tm);margin-bottom:16px;">Logged in as <strong>${currentUser?.username}</strong></p>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <button class="btn btn-g" style="justify-content:flex-start;" onclick="closeModal();navigate('settings')">⚙️ Settings</button>
+      <button class="btn btn-d" style="justify-content:flex-start;" onclick="doLogout()">🚪 Logout</button>
+    </div>
+  `);
+}
+function doLogout(){
+  closeModal();
+  currentUser=null;
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('login-wrap').classList.remove('hidden');
+  document.getElementById('li-user').value='';
+  document.getElementById('li-pass').value='';
+}
+
+// ══ STATE & STORAGE ══
+let state=JSON.parse(JSON.stringify(DEFAULT_STATE));
+let saveTimer=null;
+
+async function saveState(){
+  try{
+    await DB.set('data','state',state);
+    setSaveInd('ok');
+  }catch(e){console.error('Save error',e);setSaveInd('err');}
+}
+function scheduleSave(){
+  setSaveInd('saving');
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(saveState,600);
+}
+function setSaveInd(s){
+  const el=document.getElementById('save-ind');
+  if(!el)return;
+  if(s==='ok'){el.className='save-status save-ok';el.textContent='✓ Saved to IndexedDB';}
+  else if(s==='saving'){el.className='save-status save-ing';el.textContent='⏳ Saving...';}
+  else{el.className='save-status';el.textContent='⚠ Save error';}
+}
+
+// ══ HELPERS ══
+const fmt=n=>'₹'+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2});
+const fmtN=n=>Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2});
+const today=()=>new Date().toISOString().slice(0,10);
+const fmtD=d=>d?new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):'—';
+const daysLeft=d=>{if(!d)return null;return Math.ceil((new Date(d)-new Date())/86400000);};
+const aN=id=>(state.accounts.find(a=>a.id===id)||{name:id}).name;
+const vN=id=>(state.vendors.find(v=>v.id===id)||{name:'—'}).name;
+const dbN=id=>(state.debtors.find(d=>d.id===id)||{name:'—'}).name;
+function partyName(v){
+  if(!v.partyId)return '—';
+  if(['Sales','Debit Note','Receipt'].includes(v.type))return dbN(v.partyId);
+  return vN(v.partyId);
+}
+
+function generateFYList(){
+  const now=new Date();
+  const base=now.getMonth()>=3?now.getFullYear():now.getFullYear()-1;
+  const list=[];
+  for(let y=base-4;y<=base+6;y++) list.push(`${y}-${String(y+1).slice(2)}`);
+  return list;
+}
+function fyRange(fy){
+  const y=parseInt(fy);
+  return {start:`${y}-04-01`,end:`${y+1}-03-31`};
+}
+
+function bcol(type){
+  const m={Asset:'bb',Liability:'br',Income:'bg-',Expense:'by',Capital:'bp',
+           Receipt:'bg-',Payment:'br',Sales:'bb',Purchase:'bo',Journal:'bp',
+           Contra:'bgr','Debit Note':'by','Credit Note':'br'};
+  return m[type]||'bgr';
+}
+
+function computeLedger(){
+  const L={};
+  state.accounts.forEach(a=>{L[a.id]={...a,txns:[]};});
+  state.vouchers.forEach(v=>{
+    v.entries.forEach(e=>{
+      if(L[e.accId]) L[e.accId].txns.push({...e,date:v.date,narration:v.narration,vno:v.id,vtype:v.type});
+    });
+  });
+  Object.values(L).forEach(a=>{
+    const txD=a.txns.reduce((s,t)=>s+(t.dr||0),0);
+    const txC=a.txns.reduce((s,t)=>s+(t.cr||0),0);
+    const opD=a.nature==='Dr'?a.balance:0, opC=a.nature==='Cr'?a.balance:0;
+    a.totalDr=opD+txD; a.totalCr=opC+txC;
+    const net=a.totalDr-a.totalCr;
+    a.closingDr=net>0?net:0; a.closingCr=net<0?Math.abs(net):0;
+  });
+  return L;
+}
+
+// ══ NAVIGATION ══
+const PTITLES={dashboard:'🏠 Dashboard',accounts:'📋 Chart of Accounts',items:'📦 Item Master (HSN / SAC)',
+  vendors:'🏭 Vendors / Suppliers',debtors:'🤝 Customers / Debtors',vouchers:'📝 Voucher Entry',
+  advances:'💰 Advance Payments',daybook:'📅 Day Book',cashbook:'💵 Cash Book',ledger:'📖 Ledger',
+  bankrecon:'🏦 Bank Reconciliation',trial:'⚖️ Trial Balance',pnl:'📊 Profit & Loss',
+  balance:'🏗 Balance Sheet',cashflow:'💸 Cash Flow Statement (AS-3)',gst:'🧾 GST Reports',
+  tds:'📑 TDS Reports',import:'🔄 Excel Import / Export',settings:'⚙️ Settings'};
+
+function navigate(page){
+  document.querySelectorAll('.ni').forEach(el=>el.classList.remove('act'));
+  const n=document.getElementById('nav-'+page);
+  if(n)n.classList.add('act');
+  document.getElementById('pg-title').textContent=PTITLES[page]||page;
+  const pages={dashboard:pgDashboard,accounts:pgAccounts,items:pgItems,vendors:pgVendors,debtors:pgDebtors,
+    vouchers:pgVouchers,advances:pgAdvances,daybook:pgDayBook,cashbook:pgCashBook,ledger:pgLedger,
+    bankrecon:pgBankRecon,trial:pgTrial,pnl:pgPnL,balance:pgBalance,cashflow:pgCashFlow,
+    gst:pgGST,tds:pgTDS,import:pgImport,settings:pgSettings};
+  (pages[page]||function(){})();
+}
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('col');}
+function openModal(title,html){
+  document.getElementById('mtitle').textContent=title;
+  document.getElementById('mbody').innerHTML=html;
+  document.getElementById('modal').classList.remove('hidden');
+}
+function closeModal(){document.getElementById('modal').classList.add('hidden');}
+function eid(id){return document.getElementById(id);}
+function showToast(msg,color='#059669'){
+  const t=document.createElement('div');
+  t.style.cssText=`position:fixed;bottom:24px;right:24px;background:${color};color:#fff;padding:12px 20px;border-radius:12px;font-size:13px;font-weight:700;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.2);animation:fadeInUp .3s ease;`;
+  t.innerHTML=msg;document.body.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .4s';setTimeout(()=>t.remove(),400);},3000);
+}
+function exportXLS(data,sheet,file){
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet(data);
+  const cols=data[0]?.map((_,ci)=>({wch:Math.max(...data.map(r=>String(r[ci]||'').length))+3}));
+  if(cols)ws['!cols']=cols;
+  XLSX.utils.book_append_sheet(wb,ws,sheet);
+  XLSX.writeFile(wb,file);
+}
+function exportMultiXLS(sheets,file){
+  const wb=XLSX.utils.book_new();
+  sheets.forEach(({data,name})=>{
+    const ws=XLSX.utils.aoa_to_sheet(data);
+    const cols=data[0]?.map((_,ci)=>({wch:Math.max(...data.map(r=>String(r[ci]||'').length))+3}));
+    if(cols)ws['!cols']=cols;
+    XLSX.utils.book_append_sheet(wb,ws,name);
+  });
+  XLSX.writeFile(wb,file);
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  PAGE: DASHBOARD
+// ══════════════════════════════════════════════════════════════════
+let dashFilter='monthly';
+
+function pgDashboard(){
+  const L=computeLedger();
+  const totAssets=Object.values(L).filter(a=>a.type==='Asset').reduce((s,a)=>s+a.closingDr,0);
+  const totLiab=Object.values(L).filter(a=>a.type==='Liability').reduce((s,a)=>s+a.closingCr,0);
+  const totInc=Object.values(L).filter(a=>a.type==='Income').reduce((s,a)=>s+a.closingCr,0);
+  const totExp=Object.values(L).filter(a=>a.type==='Expense').reduce((s,a)=>s+a.closingDr,0);
+  const netP=totInc-totExp;
+  const cash=Object.values(L).filter(a=>a.group==='Cash & Bank').reduce((s,a)=>s+a.closingDr-a.closingCr,0);
+
+  const recent=[...state.vouchers].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,6).map((v,i)=>{
+    const amt=v.entries.reduce((s,e)=>s+(e.dr||0),0);
+    return `<tr class="${i%2?'alt':''}">
+      <td class="mono tb-">${v.id}</td><td>${fmtD(v.date)}</td>
+      <td><span class="badge ${bcol(v.type)}">${v.type}</span></td>
+      <td class="tm-" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${v.narration}</td>
+      <td class="tr">${fmt(amt)}</td>
+    </tr>`;
+  }).join('');
+
+  const recv=getReceivables(); const pay=getPayables();
+
+  eid('content').innerHTML=`
+  <div style="background:linear-gradient(135deg,#0f172a,#1e3a6e);border-radius:14px;padding:18px 22px;color:#fff;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+    <div>
+      <div style="font-size:21px;font-weight:700;">${state.company}</div>
+      <div style="color:#93c5fd;font-size:12px;margin-top:4px;">
+        FY ${state.fy} &nbsp;·&nbsp; ${fmtD(state.fyStart)} — ${fmtD(state.fyEnd)}
+        ${state.gstin?'&nbsp;·&nbsp; GSTIN: <strong>'+state.gstin+'</strong>':''}
+        ${state.companyState?'&nbsp;·&nbsp; '+state.companyState:''}
+      </div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:13px;color:#93c5fd;">${fmtD(today())}</div>
+      ${!state.gstin?'<div style="font-size:10px;color:#fbbf24;margin-top:3px;">⚠ Set GSTIN in Settings</div>':''}
+    </div>
+  </div>
+
+  <div class="sg">
+    <div class="sc sc-b"><div class="sl">Total Assets</div><div class="sv">${fmt(totAssets)}</div><div class="ss">${state.accounts.filter(a=>a.type==='Asset').length} accounts</div></div>
+    <div class="sc ${netP>=0?'sc-g':'sc-r'}"><div class="sl">Net ${netP>=0?'Profit':'Loss'}</div><div class="sv">${fmt(Math.abs(netP))}</div><div class="ss">${totInc>0?((netP/totInc)*100).toFixed(1):0}% margin</div></div>
+    <div class="sc sc-p"><div class="sl">Cash & Bank</div><div class="sv">${fmt(cash)}</div><div class="ss">Liquid balance</div></div>
+    <div class="sc sc-r"><div class="sl">Total Liabilities</div><div class="sv">${fmt(totLiab)}</div><div class="ss">${state.accounts.filter(a=>a.type==='Liability').length} accounts</div></div>
+  </div>
+
+  <div style="margin-bottom:16px;">
+    <div style="font-weight:700;color:var(--tm);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Quick Actions</div>
+    <div class="qg" style="grid-template-columns:repeat(5,1fr);">
+      <button class="ql q1" onclick="navigate('vouchers')"><span class="qi">📝</span><span class="qlb">New Voucher</span></button>
+      <button class="ql q2" onclick="navigate('items')"><span class="qi">📦</span><span class="qlb">Item Master</span></button>
+      <button class="ql q7" onclick="navigate('vendors')"><span class="qi">🏭</span><span class="qlb">Vendors</span></button>
+      <button class="ql q8" onclick="navigate('debtors')"><span class="qi">🤝</span><span class="qlb">Debtors</span></button>
+      <button class="ql q4" onclick="navigate('advances')"><span class="qi">💰</span><span class="qlb">Advances</span></button>
+      <button class="ql q3" onclick="navigate('trial')"><span class="qi">⚖️</span><span class="qlb">Trial Balance</span></button>
+      <button class="ql q4" onclick="navigate('pnl')"><span class="qi">📊</span><span class="qlb">P & L</span></button>
+      <button class="ql q5" onclick="navigate('balance')"><span class="qi">🏗</span><span class="qlb">Balance Sheet</span></button>
+      <button class="ql q6" onclick="navigate('cashflow')"><span class="qi">💸</span><span class="qlb">Cash Flow</span></button>
+      <button class="ql q6" onclick="navigate('bankrecon')"><span class="qi">🏦</span><span class="qlb">Bank Recon</span></button>
+    </div>
+  </div>
+
+  <div class="g2" style="gap:16px;margin-bottom:16px;">
+    <div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="font-weight:700;color:var(--tm);font-size:10px;text-transform:uppercase;letter-spacing:1px;">Sales vs Expenses</div>
+        <div class="tg">
+          <button class="t ${dashFilter==='monthly'?'act':''}" onclick="dashFilter='monthly';pgDashboard()">Monthly</button>
+          <button class="t ${dashFilter==='quarterly'?'act':''}" onclick="dashFilter='quarterly';pgDashboard()">Quarterly</button>
+          <button class="t ${dashFilter==='yearly'?'act':''}" onclick="dashFilter='yearly';pgDashboard()">Yearly</button>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-legend">
+          <span><span class="leg-dot" style="background:#2563eb;"></span>Sales / Income</span>
+          <span><span class="leg-dot" style="background:#ef4444;"></span>Expenses</span>
+        </div>
+        ${buildBarChart()}
+      </div>
+    </div>
+    <div>
+      <div style="font-weight:700;color:var(--tm);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Recent Transactions</div>
+      <div class="card">
+        <table class="tbl">
+          <thead><tr><th>Voucher</th><th>Date</th><th>Type</th><th>Narration</th><th class="tr">Amount</th></tr></thead>
+          <tbody>${recent||'<tr><td colspan="5" class="tc tm-" style="padding:20px;">No transactions</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="g2" style="gap:16px;">
+    <div>
+      <div style="font-weight:700;color:var(--tm);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">📥 Upcoming Receivables (Sales Due)</div>
+      ${buildDueTable(recv,'receivable')}
+    </div>
+    <div>
+      <div style="font-weight:700;color:var(--tm);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">📤 Upcoming Payables (Purchase Due)</div>
+      ${buildDueTable(pay,'payable')}
+    </div>
+  </div>`;
+}
+
+function buildBarChart(){
+  let data=[];
+  if(dashFilter==='monthly'){
+    for(let i=5;i>=0;i--){
+      const d=new Date(new Date().getFullYear(),new Date().getMonth()-i,1);
+      const yr=d.getFullYear(),mo=String(d.getMonth()+1).padStart(2,'0');
+      const lbl=d.toLocaleString('en-IN',{month:'short'})+"'"+String(yr).slice(2);
+      const px=`${yr}-${mo}`;
+      const s=state.vouchers.filter(v=>v.date.startsWith(px)&&v.type==='Sales').reduce((ss,v)=>ss+v.entries.reduce((x,e)=>x+(e.cr||0),0),0);
+      const e=state.vouchers.filter(v=>v.date.startsWith(px)&&['Purchase','Payment'].includes(v.type)).reduce((ss,v)=>ss+v.entries.reduce((x,e)=>x+(e.dr||0),0),0);
+      data.push({lbl,s,e});
+    }
+  }else if(dashFilter==='quarterly'){
+    const now=new Date();
+    for(let i=3;i>=0;i--){
+      const d=new Date(now.getFullYear(),now.getMonth()-i*3,1);
+      const yr=d.getFullYear(),qm=Math.floor(d.getMonth()/3);
+      const months=[(qm*3),(qm*3)+1,(qm*3)+2].map(m=>String(m+1).padStart(2,'0'));
+      const lbl=`Q${qm+1}'${String(yr).slice(2)}`;
+      const s=state.vouchers.filter(v=>months.some(m=>v.date.startsWith(`${yr}-${m}`))&&v.type==='Sales').reduce((ss,v)=>ss+v.entries.reduce((x,e)=>x+(e.cr||0),0),0);
+      const e=state.vouchers.filter(v=>months.some(m=>v.date.startsWith(`${yr}-${m}`))&&['Purchase','Payment'].includes(v.type)).reduce((ss,v)=>ss+v.entries.reduce((x,e)=>x+(e.dr||0),0),0);
+      data.push({lbl,s,e});
+    }
+  }else{
+    const yr=new Date().getFullYear();
+    for(let y=yr-2;y<=yr;y++){
+      const s=state.vouchers.filter(v=>v.date.startsWith(String(y))&&v.type==='Sales').reduce((ss,v)=>ss+v.entries.reduce((x,e)=>x+(e.cr||0),0),0);
+      const e=state.vouchers.filter(v=>v.date.startsWith(String(y))&&['Purchase','Payment'].includes(v.type)).reduce((ss,v)=>ss+v.entries.reduce((x,e)=>x+(e.dr||0),0),0);
+      data.push({lbl:String(y),s,e});
+    }
+  }
+  const W=620,H=180,PL=40,PB=30,PT=10;
+  const max=Math.max(...data.flatMap(d=>[d.s,d.e]),1);
+  const n=data.length;
+  const slot=(W-PL)/(n||1);
+  const bw=slot*0.3;
+  let bars='',labels='',ylines='';
+  [0.25,0.5,0.75,1].forEach(f=>{
+    const y=PT+(H-PB-PT)*(1-f);
+    ylines+=`<line x1="${PL}" y1="${y}" x2="${W}" y2="${y}" stroke="#f1f5f9" stroke-width="1"/>`;
+    ylines+=`<text x="${PL-4}" y="${y+4}" text-anchor="end" font-size="8" fill="#94a3b8">₹${fmtN(max*f/1000)}k</text>`;
+  });
+  data.forEach((d,i)=>{
+    const cx=PL+slot*i+slot/2;
+    const sh=d.s>0?((d.s/max)*(H-PB-PT)):0;
+    const eh=d.e>0?((d.e/max)*(H-PB-PT)):0;
+    bars+=`<rect x="${cx-bw-1}" y="${H-PB-sh}" width="${bw}" height="${sh}" fill="#2563eb" rx="2" opacity=".85"/>`;
+    bars+=`<rect x="${cx+1}" y="${H-PB-eh}" width="${bw}" height="${eh}" fill="#ef4444" rx="2" opacity=".85"/>`;
+    labels+=`<text x="${cx}" y="${H-PB+12}" text-anchor="middle" font-size="9" fill="#64748b">${d.lbl}</text>`;
+  });
+  return `<svg width="100%" viewBox="0 0 ${W} ${H}" style="font-family:IBM Plex Sans,sans-serif;display:block;">
+    ${ylines}
+    <line x1="${PL}" y1="${H-PB}" x2="${W}" y2="${H-PB}" stroke="#e2e8f0" stroke-width="1.5"/>
+    ${bars}${labels}
+  </svg>`;
+}
+
+function getReceivables(){
+  return state.vouchers
+    .filter(v=>['Sales','Debit Note'].includes(v.type)&&v.dueDate)
+    .map(v=>{
+      const amt=v.entries.reduce((s,e)=>s+(e.dr||0),0);
+      return{...v,dl:daysLeft(v.dueDate),amount:amt,party:partyName(v)};
+    }).sort((a,b)=>a.dl-b.dl);
+}
+function getPayables(){
+  return state.vouchers
+    .filter(v=>['Purchase','Credit Note'].includes(v.type)&&v.dueDate)
+    .map(v=>{
+      const amt=v.entries.reduce((s,e)=>s+(e.dr||0),0);
+      return{...v,dl:daysLeft(v.dueDate),amount:amt,party:partyName(v)};
+    }).sort((a,b)=>a.dl-b.dl);
+}
+function buildDueTable(items,type){
+  if(!items.length)return`<div class="card" style="padding:16px;text-align:center;color:var(--tm);font-size:12px;">No pending ${type}s with due dates</div>`;
+  const rows=items.slice(0,6).map((v,i)=>{
+    const dc=v.dl<0?'due-over':v.dl<=7?'due-warn':'due-ok';
+    const db=v.dl<0?'due-badge-over':v.dl<=7?'due-badge-warn':'due-badge-ok';
+    return`<tr class="${i%2?'alt':''}">
+      <td class="mono tb-" style="font-size:11px;">${v.id}</td>
+      <td style="font-size:11px;">${v.party}</td>
+      <td class="tr" style="font-size:11px;">${fmt(v.amount)}</td>
+      <td><span class="badge ${db}">${v.dl<0?Math.abs(v.dl)+' overdue':v.dl===0?'Today':v.dl+' days'}</span></td>
+    </tr>`;
+  }).join('');
+  return`<div class="card"><table class="tbl">
+    <thead><tr><th>Voucher</th><th>Party</th><th class="tr">Amount</th><th>Due In</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  PAGE: ACCOUNTS
+// ══════════════════════════════════════════════════════════════════
+let accFil='All',accSrch='';
+
+function pgAccounts(){renderAccounts();}
+
+function renderAccounts(){
+  const fil=state.accounts.filter(a=>(accFil==='All'||a.type===accFil)&&(a.name.toLowerCase().includes(accSrch.toLowerCase())||a.id.includes(accSrch)));
+  const rows=fil.map((a,i)=>`<tr class="${i%2?'alt':''}">
+    <td class="mono tb- fw-bold">${a.id}</td><td class="fw-bold">${a.name}</td>
+    <td class="tm-" style="font-size:11px;">${a.group}</td>
+    <td><span class="badge ${bcol(a.type)}">${a.type}</span></td>
+    <td class="tr mono">${fmt(a.balance)}</td>
+    <td><span class="badge ${a.nature==='Dr'?'bb':'br'}">${a.nature}</span></td>
+    <td><button class="btn btn-g btn-sm" onclick="openAccForm('${a.id}')">✏ Edit</button>
+        <button class="btn btn-d btn-sm" onclick="delAcc('${a.id}')">Del</button></td>
+  </tr>`).join('');
+  eid('content').innerHTML=`
+  <div class="tb no-print">
+    <input class="si" id="acc-s" placeholder="🔍 Search…" value="${accSrch}" oninput="accSrch=this.value;renderAccounts()">
+    <div class="tg">${['All',...AT].map(t=>`<button class="t ${accFil===t?'act':''}" onclick="accFil='${t}';renderAccounts()">${t}</button>`).join('')}</div>
+    <button class="btn btn-p" onclick="openAccForm()">+ New Account</button>
+    <button class="btn btn-s" onclick="exportAccounts()" style="margin-left:auto;">⬇ Export Excel</button>
+  </div>
+  <div class="card"><table class="tbl">
+    <thead><tr><th>Acc. ID</th><th>Name</th><th>Group</th><th>Type</th><th class="tr">Opening Bal.</th><th>Nature</th><th class="no-print">Actions</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--tm)">No accounts found</td></tr>'}</tbody>
+  </table></div>
+  <div style="margin-top:7px;font-size:11px;color:var(--tm);">Showing ${fil.length} of ${state.accounts.length} accounts</div>`;
+}
+
+function openAccForm(editId){
+  const a=editId?state.accounts.find(x=>x.id===editId):null;
+  const tOpts=AT.map(t=>`<option ${a?.type===t?'selected':''}>${t}</option>`).join('');
+  const gOpts=(a?AG[a.type]||[]:AG['Asset']).map(g=>`<option ${a?.group===g?'selected':''}>${g}</option>`).join('');
+  openModal(editId?'Edit Account':'New Account',`
+  <div class="fg">
+    <div class="fgr"><label class="fl">Account ID *</label><input class="fc" id="f-id" value="${a?.id||''}" ${editId?'disabled':''} placeholder="e.g. 1007"></div>
+    <div class="fgr"><label class="fl">Account Name *</label><input class="fc" id="f-name" value="${a?.name||''}" placeholder="Account name"></div>
+    <div class="fgr"><label class="fl">Type</label><select class="fc" id="f-type" onchange="updGrp(this.value,'${a?.group||''}')">
+      ${tOpts}</select></div>
+    <div class="fgr"><label class="fl">Group</label><select class="fc" id="f-grp">
+      <option value="">—Select Group—</option>${gOpts}</select></div>
+    <div class="fgr"><label class="fl">Opening Balance</label><input type="number" class="fc" id="f-bal" value="${a?.balance||0}" min="0"></div>
+    <div class="fgr"><label class="fl">Nature</label><select class="fc" id="f-nat">
+      <option ${a?.nature==='Dr'?'selected':''}>Dr</option><option ${a?.nature==='Cr'?'selected':''}>Cr</option></select></div>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:14px;">
+    <button class="btn btn-p" onclick="saveAcc('${editId||''}')">💾 Save</button>
+    <button class="btn btn-g" onclick="closeModal()">Cancel</button>
+  </div>`);
+}
+function updGrp(type,sel){
+  const s=eid('f-grp');
+  s.innerHTML='<option value="">—Select Group—</option>'+(AG[type]||[]).map(g=>`<option ${g===sel?'selected':''}>${g}</option>`).join('');
+}
+function saveAcc(editId){
+  const id=eid('f-id').value.trim(),name=eid('f-name').value.trim(),type=eid('f-type').value,group=eid('f-grp').value,bal=parseFloat(eid('f-bal').value)||0,nat=eid('f-nat').value;
+  if(!id||!name)return alert('ID and Name required');
+  if(!editId&&state.accounts.find(a=>a.id===id))return alert('ID already exists');
+  const obj={id,name,type,group,balance:bal,nature:nat};
+  if(editId) state.accounts=state.accounts.map(a=>a.id===editId?obj:a);
+  else state.accounts.push(obj);
+  scheduleSave();closeModal();renderAccounts();
+}
+function delAcc(id){if(!confirm('Delete account?'))return;state.accounts=state.accounts.filter(a=>a.id!==id);scheduleSave();renderAccounts();}
+function exportAccounts(){
+  exportXLS([[state.company,'','','','',''],['CHART OF ACCOUNTS','','','','',''],
+    ['Account ID','Account Name','Group','Type','Opening Balance','Nature'],
+    ...state.accounts.map(a=>[a.id,a.name,a.group,a.type,a.balance,a.nature])
+  ],'Accounts','Chart_of_Accounts.xlsx');
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  PAGE: VENDORS
+// ══════════════════════════════════════════════════════════════════
+function pgVendors(){renderVendors();}
+let vndSrch='';
+
+function renderVendors(){
+  const fil=state.vendors.filter(v=>v.name.toLowerCase().includes(vndSrch.toLowerCase())||v.contact?.includes(vndSrch));
+  const rows=fil.map((v,i)=>`<tr class="${i%2?'alt':''}">
+    <td class="fw-bold">${v.name}</td>
+    <td class="tm-" style="font-size:11px;">${v.city||''}${v.pincode?', '+v.pincode:''}</td>
+    <td class="mono" style="font-size:11px;">${v.contact||'—'}</td>
+    <td style="font-size:11px;">${v.email||'—'}</td>
+    <td><span class="badge ${v.gstRegistered?'bg-':'bgr'}">${v.gstRegistered?v.gstn||'Registered':'Unregistered'}</span></td>
+    <td><button class="btn btn-g btn-sm" onclick="openPartyForm('vendor','${v.id}')">✏ Edit</button>
+        <button class="btn btn-d btn-sm" onclick="delParty('vendor','${v.id}')">Del</button></td>
+  </tr>`).join('');
+  eid('content').innerHTML=`
+  <div class="tb no-print">
+    <input class="si" placeholder="🔍 Search vendors…" value="${vndSrch}" oninput="vndSrch=this.value;renderVendors()">
+    <button class="btn btn-p" onclick="openPartyForm('vendor')">+ Add Vendor</button>
+    <button class="btn btn-s" onclick="exportParty('vendor')" style="margin-left:auto;">⬇ Export Excel</button>
+  </div>
+  <div class="card"><table class="tbl">
+    <thead><tr><th>Name</th><th>City / Pincode</th><th>Contact</th><th>Email</th><th>GST Status</th><th class="no-print">Actions</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--tm)">No vendors added yet</td></tr>'}</tbody>
+  </table></div>`;
+}
+
+function pgDebtors(){renderDebtors();}
+let dbtSrch='';
+
+function renderDebtors(){
+  const fil=state.debtors.filter(d=>d.name.toLowerCase().includes(dbtSrch.toLowerCase())||d.contact?.includes(dbtSrch));
+  const rows=fil.map((d,i)=>`<tr class="${i%2?'alt':''}">
+    <td class="fw-bold">${d.name}</td>
+    <td class="tm-" style="font-size:11px;">${d.city||''}${d.pincode?', '+d.pincode:''}</td>
+    <td class="mono" style="font-size:11px;">${d.contact||'—'}</td>
+    <td style="font-size:11px;">${d.email||'—'}</td>
+    <td><span class="badge ${d.gstRegistered?'bg-':'bgr'}">${d.gstRegistered?d.gstn||'Registered':'Unregistered'}</span></td>
+    <td><button class="btn btn-g btn-sm" onclick="openPartyForm('debtor','${d.id}')">✏ Edit</button>
+        <button class="btn btn-d btn-sm" onclick="delParty('debtor','${d.id}')">Del</button></td>
+  </tr>`).join('');
+  eid('content').innerHTML=`
+  <div class="tb no-print">
+    <input class="si" placeholder="🔍 Search customers…" value="${dbtSrch}" oninput="dbtSrch=this.value;renderDebtors()">
+    <button class="btn btn-p" onclick="openPartyForm('debtor')">+ Add Customer / Debtor</button>
+    <button class="btn btn-s" onclick="exportParty('debtor')" style="margin-left:auto;">⬇ Export Excel</button>
+  </div>
+  <div class="card"><table class="tbl">
+    <thead><tr><th>Name</th><th>City / Pincode</th><th>Contact</th><th>Email</th><th>GST Status</th><th class="no-print">Actions</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--tm)">No customers added yet</td></tr>'}</tbody>
+  </table></div>`;
+}
+
+function openPartyForm(ptype,editId){
+  const list=ptype==='vendor'?state.vendors:state.debtors;
+  const p=editId?list.find(x=>x.id===editId):null;
+  const title=ptype==='vendor'?(editId?'Edit Vendor':'New Vendor'):(editId?'Edit Customer':'New Customer');
+  openModal(title,`
+  <div class="fg" style="margin-bottom:14px;">
+    <div class="fgr" style="grid-column:span 2;"><label class="fl">Full Name / Company Name *</label><input class="fc" id="p-name" value="${p?.name||''}" placeholder="${ptype==='vendor'?'Supplier name':'Customer / Company name'}"></div>
+    <div class="fgr" style="grid-column:span 2;"><label class="fl">Address</label><input class="fc" id="p-addr" value="${p?.address||''}" placeholder="Street address"></div>
+    <div class="fgr"><label class="fl">City</label><input class="fc" id="p-city" value="${p?.city||''}" placeholder="City"></div>
+    <div class="fgr"><label class="fl">State</label><input class="fc" id="p-state" value="${p?.state||''}" placeholder="State"></div>
+    <div class="fgr"><label class="fl">Pincode</label><input class="fc" id="p-pin" value="${p?.pincode||''}" placeholder="e.g. 400001" maxlength="6"></div>
+    <div class="fgr"><label class="fl">Contact No.</label><input class="fc" id="p-cont" value="${p?.contact||''}" placeholder="10-digit mobile" maxlength="12"></div>
+    <div class="fgr"><label class="fl">Email ID</label><input type="email" class="fc" id="p-email" value="${p?.email||''}" placeholder="email@company.com"></div>
+    <div class="fgr"><label class="fl">Credit Days</label><input type="number" class="fc" id="p-cdays" value="${p?.creditDays||30}" min="0" max="365"></div>
+  </div>
+  <div style="background:#f0fdf4;border:1px solid #a7f3d0;border-radius:10px;padding:14px;margin-bottom:14px;">
+    <div style="font-size:12px;font-weight:700;color:#065f46;margin-bottom:10px;">GST Details</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+      <label class="fl" style="margin:0;">GST Registered?</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;">
+        <input type="checkbox" id="p-gstreg" ${p?.gstRegistered?'checked':''} onchange="toggleGSTInput()"> Yes, Registered
+      </label>
+    </div>
+    <div id="gstn-wrap" style="${p?.gstRegistered?'':'display:none'}">
+      <input class="fc" id="p-gstn" value="${p?.gstn||''}" placeholder="15-digit GSTIN e.g. 27AABCU9603R1ZX" maxlength="15" style="text-transform:uppercase;">
+    </div>
+    <div id="ungst-wrap" style="${p?.gstRegistered?'display:none':''}">
+      <div style="font-size:11px;color:#64748b;">This party is unregistered under GST. RCM may apply.</div>
+    </div>
+  </div>
+  <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;margin-bottom:14px;">
+    <div style="font-size:12px;font-weight:700;color:#1e40af;margin-bottom:10px;">Bank Details (for payment)</div>
+    <div class="fg">
+      <div class="fgr"><label class="fl">Bank Name</label><input class="fc" id="p-bank" value="${p?.bankName||''}" placeholder="e.g. State Bank of India"></div>
+      <div class="fgr"><label class="fl">Account No.</label><input class="fc" id="p-bano" value="${p?.bankAccount||''}" placeholder="Account number"></div>
+      <div class="fgr"><label class="fl">IFSC Code</label><input class="fc" id="p-ifsc" value="${p?.bankIFSC||''}" placeholder="e.g. SBIN0001234"></div>
+      <div class="fgr"><label class="fl">Branch</label><input class="fc" id="p-brnch" value="${p?.bankBranch||''}" placeholder="Branch name"></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <button class="btn btn-p" onclick="saveParty('${ptype}','${editId||''}')">💾 Save</button>
+    <button class="btn btn-g" onclick="closeModal()">Cancel</button>
+  </div>`);
+}
+function toggleGSTInput(){
+  const checked=eid('p-gstreg').checked;
+  eid('gstn-wrap').style.display=checked?'':'none';
+  eid('ungst-wrap').style.display=checked?'none':'';
+}
+function saveParty(ptype,editId){
+  const name=eid('p-name').value.trim();
+  if(!name)return alert('Name is required');
+  const obj={
+    id:editId||(ptype[0]+Date.now()),name,
+    address:eid('p-addr').value.trim(),city:eid('p-city').value.trim(),
+    state:eid('p-state').value.trim(),pincode:eid('p-pin').value.trim(),
+    contact:eid('p-cont').value.trim(),email:eid('p-email').value.trim(),
+    creditDays:parseInt(eid('p-cdays').value)||30,
+    gstRegistered:eid('p-gstreg').checked,
+    gstn:eid('p-gstn')?.value.toUpperCase().trim()||'',
+    bankName:eid('p-bank').value.trim(),bankAccount:eid('p-bano').value.trim(),
+    bankIFSC:eid('p-ifsc').value.toUpperCase().trim(),bankBranch:eid('p-brnch').value.trim(),
+  };
+  const list=ptype==='vendor'?'vendors':'debtors';
+  if(editId) state[list]=state[list].map(x=>x.id===editId?obj:x);
+  else state[list].push(obj);
+  scheduleSave();closeModal();
+  ptype==='vendor'?renderVendors():renderDebtors();
+}
+function delParty(ptype,id){
+  if(!confirm('Delete?'))return;
+  const list=ptype==='vendor'?'vendors':'debtors';
+  state[list]=state[list].filter(x=>x.id!==id);
+  scheduleSave();
+  ptype==='vendor'?renderVendors():renderDebtors();
+}
+function exportParty(ptype){
+  const list=ptype==='vendor'?state.vendors:state.debtors;
+  const title=ptype==='vendor'?'VENDOR MASTER':'DEBTOR MASTER';
+  exportXLS([
+    [state.company,'','','','','','',''],
+    [title,'','','','','','',''],
+    ['Name','Address','City','State','Pincode','Contact','Email','GST Status','GSTN','Bank Name','Account No','IFSC','Branch','Credit Days'],
+    ...list.map(p=>[p.name,p.address,p.city,p.state,p.pincode,p.contact,p.email,p.gstRegistered?'Registered':'Unregistered',p.gstn,p.bankName,p.bankAccount,p.bankIFSC,p.bankBranch,p.creditDays])
+  ],title,`${title}.xlsx`);
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  PAGE: ITEM MASTER (HSN / SAC)
+// ══════════════════════════════════════════════════════════════════
+function pgItems(){renderItems();}
+let itemSrch='';
+function renderItems(){
+  if(!state.items)state.items=[];
+  const fil=state.items.filter(i=>i.name.toLowerCase().includes(itemSrch.toLowerCase())||i.hsn?.includes(itemSrch)||i.sac?.includes(itemSrch));
+  const rows=fil.map((it,i)=>`<tr class="${i%2?'alt':''}">
+    <td class="mono tb-">${it.id}</td>
+    <td class="fw-bold">${it.name}</td>
+    <td><span class="badge ${it.type==='Goods'?'bb':'bg-'}">${it.type}</span></td>
+    <td class="mono">${it.hsn||it.sac||'—'}</td>
+    <td class="tm-">${it.unit}</td>
+    <td class="tr mono">${fmt(it.saleRate)}</td>
+    <td class="tr mono">${fmt(it.purchaseRate)}</td>
+    <td class="tc"><span class="badge by">${it.gstRate}%</span></td>
+    <td>
+      <button class="btn btn-g btn-sm" onclick="openItemForm('${it.id}')">✏ Edit</button>
+      <button class="btn btn-d btn-sm" onclick="delItem('${it.id}')">Del</button>
+    </td>
+  </tr>`).join('');
+  eid('content').innerHTML=`
+  <div class="tb no-print">
+    <input class="si" placeholder="🔍 Search items, HSN/SAC…" value="${itemSrch}" oninput="itemSrch=this.value;renderItems()">
+    <button class="btn btn-p" onclick="openItemForm()">+ New Item / Service</button>
+    <button class="btn btn-s" onclick="exportItems()" style="margin-left:auto;">⬇ Excel</button>
+  </div>
+  <div class="card"><table class="tbl">
+    <thead><tr><th>Item ID</th><th>Name</th><th>Type</th><th>HSN/SAC</th><th>Unit</th><th class="tr">Sale Rate</th><th class="tr">Purchase Rate</th><th class="tc">GST%</th><th class="no-print">Actions</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="9" style="padding:20px;text-align:center;color:var(--tm);">No items yet. Add your products/services.</td></tr>'}</tbody>
+  </table></div>`;
+}
+function openItemForm(editId){
+  const it=editId?(state.items||[]).find(x=>x.id===editId):null;
+  const accOpts=(type)=>state.accounts.filter(a=>a.type===type).map(a=>`<option value="${a.id}" ${it?.[type==='Income'?'incomeAccId':'expenseAccId']===a.id?'selected':''}>${a.id} — ${a.name}</option>`).join('');
+  openModal(editId?'Edit Item':'New Item / Service',`
+  <div class="fg" style="margin-bottom:14px;">
+    <div class="fgr"><label class="fl">Item Name *</label><input class="fc" id="it-name" value="${it?.name||''}" placeholder="Product or Service name"></div>
+    <div class="fgr"><label class="fl">Type</label>
+      <select class="fc" id="it-type" onchange="toggleHSNSAC(this.value)">
+        <option ${it?.type==='Goods'?'selected':''}>Goods</option>
+        <option ${it?.type==='Service'?'selected':''}>Service</option>
+      </select>
+    </div>
+    <div class="fgr" id="hsn-wrap"><label class="fl">HSN Code (Goods)</label><input class="fc" id="it-hsn" value="${it?.hsn||''}" placeholder="6-8 digit HSN"></div>
+    <div class="fgr" id="sac-wrap" style="${it?.type==='Service'?'':'display:none'}"><label class="fl">SAC Code (Services)</label><input class="fc" id="it-sac" value="${it?.sac||''}" placeholder="6-digit SAC"></div>
+    <div class="fgr"><label class="fl">Unit</label>
+      <select class="fc" id="it-unit">
+        ${['Nos','Kg','Ltr','Mtr','Box','Set','Hr','Day','Month','Pair','Pcs','Ton'].map(u=>`<option ${it?.unit===u?'selected':''}>${u}</option>`).join('')}
+      </select>
+    </div>
+    <div class="fgr"><label class="fl">GST Rate %</label>
+      <select class="fc" id="it-gst">
+        ${GST_RATES.map(r=>`<option value="${r}" ${it?.gstRate===r?'selected':''}>${r}%</option>`).join('')}
+      </select>
+    </div>
+    <div class="fgr"><label class="fl">Sale Rate (₹)</label><input type="number" class="fc" id="it-srate" value="${it?.saleRate||0}" min="0"></div>
+    <div class="fgr"><label class="fl">Purchase Rate (₹)</label><input type="number" class="fc" id="it-prate" value="${it?.purchaseRate||0}" min="0"></div>
+    <div class="fgr" style="grid-column:span 2;"><label class="fl">Income Account (for Sales)</label>
+      <select class="fc" id="it-iacc"><option value="">—Select—</option>${accOpts('Income')}</select></div>
+    <div class="fgr" style="grid-column:span 2;"><label class="fl">Expense Account (for Purchase)</label>
+      <select class="fc" id="it-eacc"><option value="">—Select—</option>${accOpts('Expense')}</select></div>
+    <div class="fgr" style="grid-column:span 4;"><label class="fl">Description</label><input class="fc" id="it-desc" value="${it?.desc||it?.description||''}" placeholder="Item description"></div>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <button class="btn btn-p" onclick="saveItem('${editId||''}')">💾 Save Item</button>
+    <button class="btn btn-g" onclick="closeModal()">Cancel</button>
+  </div>`);
+  toggleHSNSAC(it?.type||'Goods');
+}
+function toggleHSNSAC(type){
+  const hw=eid('hsn-wrap'),sw=eid('sac-wrap');
+  if(hw)hw.style.display=type==='Goods'?'':'none';
+  if(sw)sw.style.display=type==='Service'?'':'none';
+}
+function saveItem(editId){
+  if(!state.items)state.items=[];
+  const name=eid('it-name').value.trim();
+  if(!name)return alert('Item name required');
+  const obj={
+    id:editId||('ITM'+String(Date.now()).slice(-6)),
+    name,type:eid('it-type').value,
+    hsn:eid('it-hsn')?.value.trim()||'',sac:eid('it-sac')?.value.trim()||'',
+    unit:eid('it-unit').value,gstRate:parseFloat(eid('it-gst').value)||0,
+    saleRate:parseFloat(eid('it-srate').value)||0,purchaseRate:parseFloat(eid('it-prate').value)||0,
+    incomeAccId:eid('it-iacc').value,expenseAccId:eid('it-eacc').value,
+    description:eid('it-desc').value.trim()
+  };
+  if(editId) state.items=state.items.map(x=>x.id===editId?obj:x);
+  else state.items.push(obj);
+  scheduleSave();closeModal();renderItems();
+}
+function delItem(id){if(!confirm('Delete item?'))return;state.items=state.items.filter(x=>x.id!==id);scheduleSave();renderItems();}
+function exportItems(){
+  exportXLS([[state.company,'','','','','','',''],['ITEM MASTER','','','','','','',''],
+    ['Item ID','Name','Type','HSN','SAC','Unit','GST%','Sale Rate','Purchase Rate','Description'],
+    ...(state.items||[]).map(i=>[i.id,i.name,i.type,i.hsn,i.sac,i.unit,i.gstRate,i.saleRate,i.purchaseRate,i.description])
+  ],'Items','Item_Master.xlsx');
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  PAGE: VOUCHERS — Zoho-Style with Item Lines, GST Auto-split,
+//        TDS Engine, Entry Preview Panel, Advance Adjustment
+// ══════════════════════════════════════════════════════════════════
+let vFil='All', vItemLines=[], vManualEntries=[{accId:'',dr:0,cr:0},{accId:'',dr:0,cr:0}], editVId=null, vMode='smart';
+
+function pgVouchers(){
+  vItemLines=[{itemId:'',desc:'',qty:1,rate:0,disc:0,gstRate:18,gstType:'CGST+SGST (Intra-state)'}];
+  vManualEntries=[{accId:'',dr:0,cr:0},{accId:'',dr:0,cr:0}];
+  editVId=null;renderVouchers();
+}
+
+function renderVouchers(){
+  if(!state.items)state.items=[];
+  const fil=vFil==='All'?state.vouchers:state.vouchers.filter(v=>v.type===vFil);
+  const sorted=[...fil].sort((a,b)=>b.date.localeCompare(a.date));
+  const rows=sorted.map((v,i)=>{
+    const amt=v.entries.reduce((s,e)=>s+(e.dr||0),0);
+    const hasItems=v.items&&v.items.length>0;
+    return`<tr class="${i%2?'alt':''}">
+      <td class="mono tb-">${v.id}</td><td>${fmtD(v.date)}</td>
+      <td><span class="badge ${bcol(v.type)}">${v.type}</span></td>
+      <td class="tm-" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${v.narration}</td>
+      <td class="tm-" style="font-size:11px;">${v.ref||'—'}</td>
+      ${hasItems?`<td><span class="badge bg-">${v.items.length} item${v.items.length>1?'s':''}</span></td>`:'<td class="tm-" style="font-size:10px;">Manual</td>'}
+      <td class="tr mono">${fmt(amt)}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-g btn-sm" onclick="editVoucher('${v.id}')">✏</button>
+        ${['Sales','Debit Note'].includes(v.type)?`<button class="btn btn-w btn-sm" onclick="printVoucher('${v.id}')">🖨</button>`:''}
+        <button class="btn btn-d btn-sm" onclick="delVoucher('${v.id}')">Del</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const usedNums=new Set(state.vouchers.map(v=>parseInt(v.id.replace(/\D/g,''))||0));let nextNum=1;while(usedNums.has(nextNum))nextNum++;const nextId='V'+String(nextNum).padStart(3,'0');
+  const curType=eid('v-type')?.value||'Sales';
+  const partyList=(['Sales','Debit Note','Receipt'].includes(curType)?state.debtors:state.vendors);
+  const partyOpts=partyList.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  const accOpts=state.accounts.map(a=>`<option value="${a.id}">${a.id} — ${a.name}</option>`).join('');
+  const itemOpts=(state.items||[]).map(i=>`<option value="${i.id}">${i.name} (${i.hsn||i.sac||'—'})</option>`).join('');
+
+  // ── Compute preview entries from item lines ──
+  const preview = computePreviewEntries(curType, vItemLines);
+  const totDr=preview.reduce((s,e)=>s+(e.dr||0),0);
+  const totCr=preview.reduce((s,e)=>s+(e.cr||0),0);
+  const bal=Math.abs(totDr-totCr)<0.01;
+
+  const previewRows = preview.map(e=>`
+    <tr style="font-size:11px;">
+      <td class="mono" style="color:#2563eb;padding:5px 8px;">${e.accId}</td>
+      <td style="padding:5px 8px;">${aN(e.accId)||e.accId}</td>
+      <td style="padding:5px 8px;"><span style="font-size:10px;background:#f1f5f9;border-radius:4px;padding:1px 6px;">${e.tag||''}</span></td>
+      <td class="tr" style="padding:5px 8px;color:#059669;font-weight:600;">${e.dr>0?fmt(e.dr):'—'}</td>
+      <td class="tr" style="padding:5px 8px;color:#dc2626;font-weight:600;">${e.cr>0?fmt(e.cr):'—'}</td>
+    </tr>`).join('');
+
+  const itemRows=vItemLines.map((ln,i)=>`
+    <tr id="irow-${i}" style="background:${i%2?'#fafafa':'#fff'};">
+      <td style="padding:4px 6px;min-width:180px;">
+        <select class="fc" style="padding:4px 6px;font-size:12px;" onchange="onItemSelect(${i},this.value)">
+          <option value="">— Select Item —</option>${itemOpts.replace(`value="${ln.itemId}"`,`value="${ln.itemId}" selected`)}
+        </select>
+      </td>
+      <td style="padding:4px 6px;min-width:150px;">
+        <input class="fc" style="padding:4px 6px;font-size:12px;" value="${ln.desc||''}" placeholder="Description" oninput="vItemLines[${i}].desc=this.value;refreshPreview()">
+      </td>
+      <td style="padding:4px 6px;width:70px;">
+        <input type="number" class="fc tr" style="padding:4px 6px;font-size:12px;" value="${ln.qty||1}" min="0.01" step="0.01" oninput="vItemLines[${i}].qty=parseFloat(this.value)||1;refreshPreview()">
+      </td>
+      <td style="padding:4px 6px;width:100px;">
+        <input type="number" class="fc tr" style="padding:4px 6px;font-size:12px;" value="${ln.rate||''}" min="0" placeholder="0" oninput="vItemLines[${i}].rate=parseFloat(this.value)||0;refreshPreview()">
+      </td>
+      <td style="padding:4px 6px;width:70px;">
+        <input type="number" class="fc tr" style="padding:4px 6px;font-size:12px;" value="${ln.disc||0}" min="0" max="100" placeholder="%" oninput="vItemLines[${i}].disc=parseFloat(this.value)||0;refreshPreview()">
+      </td>
+      <td style="padding:4px 6px;width:80px;">
+        <select class="fc" style="padding:4px 6px;font-size:12px;" onchange="vItemLines[${i}].gstRate=parseFloat(this.value);refreshPreview()">
+          ${GST_RATES.map(r=>`<option value="${r}" ${ln.gstRate===r?'selected':''}>${r}%</option>`).join('')}
+        </select>
+      </td>
+      <td style="padding:4px 6px;width:160px;">
+        <select class="fc" style="padding:4px 6px;font-size:12px;" onchange="vItemLines[${i}].gstType=this.value;refreshPreview()">
+          ${GST_TYPES.map(t=>`<option ${ln.gstType===t?'selected':''}>${t}</option>`).join('')}
+        </select>
+      </td>
+      <td class="tr" style="padding:4px 10px;font-size:12px;font-weight:600;white-space:nowrap;color:#1e293b;">
+        ${fmt(calcLineTaxable(ln))}
+      </td>
+      <td class="tr" style="padding:4px 10px;font-size:12px;font-weight:700;white-space:nowrap;color:#059669;">
+        ${fmt(calcLineTotal(ln))}
+      </td>
+      <td style="padding:4px 6px;text-align:center;">
+        ${vItemLines.length>1?`<button class="btn btn-d btn-sm" onclick="remItemRow(${i})">✕</button>`:''}
+      </td>
+    </tr>`).join('');
+
+  const taxSummary=calcTaxSummary(vItemLines,curType);
+
+  eid('content').innerHTML=`
+  <div style="display:grid;grid-template-columns:1fr 380px;gap:16px;align-items:start;">
+    <!-- LEFT: VOUCHER FORM -->
+    <div>
+      <div style="font-weight:700;color:var(--tm);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">
+        ${editVId?'✏ Edit Voucher: '+editVId:'🆕 New Voucher — Zoho Style'}
+      </div>
+      <div class="fp">
+        <!-- Header -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;">
+          <div class="fgr"><label class="fl">Voucher No.</label><input class="fc" id="v-id" value="${editVId||nextId}"></div>
+          <div class="fgr"><label class="fl">Date *</label><input type="date" class="fc" id="v-date" value="${eid('v-date')?.value||today()}"></div>
+          <div class="fgr"><label class="fl">Type</label>
+            <select class="fc" id="v-type" onchange="onVTypeChange(this.value)">
+              ${VT.map(t=>`<option ${t===(eid('v-type')?.value||'Sales')?'selected':''}>${t}</option>`).join('')}
+            </select>
+          </div>
+          <div class="fgr"><label class="fl">Reference No.</label><input class="fc" id="v-ref" value="${eid('v-ref')?.value||''}" placeholder="INV / PO no."></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+          <div class="fgr"><label class="fl">Party</label>
+            <select class="fc" id="v-party" onchange="onPartyChange(this.value,'${curType}')">
+              <option value="">— No party —</option>${partyOpts}
+            </select>
+          </div>
+          <div class="fgr"><label class="fl">Narration *</label><input class="fc" id="v-nar" value="${eid('v-nar')?.value||''}" placeholder="Transaction description…"></div>
+          <div class="fgr"><label class="fl">Due Date</label><input type="date" class="fc" id="v-due" value="${eid('v-due')?.value||''}"></div>
+          <div class="fgr"><label class="fl">TDS Section</label>
+            <select class="fc" id="v-tds" onchange="refreshPreview()">
+              <option value="">— No TDS —</option>
+              ${TDS_SECTIONS.map(s=>`<option value="${s.code}" ${eid('v-tds')?.value===s.code?'selected':''}>${s.code} — ${s.desc} (${s.rate}%)</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;">
+          <span style="font-size:11px;font-weight:700;color:var(--tm);">Mode:</span>
+          <div class="tg">
+            <button class="t ${vMode==='smart'?'act':''}" onclick="vMode='smart';renderVouchers()">📦 Smart (Items)</button>
+            <button class="t ${vMode==='manual'?'act':''}" onclick="vMode='manual';renderVouchers()">✏ Manual (Accounts)</button>
+          </div>
+        </div>
+        ${vMode==='smart'?`
+        <!-- ITEM LINES TABLE -->
+        <div style="overflow-x:auto;margin-bottom:8px;">
+          <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
+            <thead><tr style="background:#334155;color:#e2e8f0;">
+              <th style="padding:7px 8px;font-size:10px;text-align:left;">Item / Product</th>
+              <th style="padding:7px 8px;font-size:10px;text-align:left;">Description</th>
+              <th style="padding:7px 8px;font-size:10px;text-align:right;">Qty</th>
+              <th style="padding:7px 8px;font-size:10px;text-align:right;">Rate (₹)</th>
+              <th style="padding:7px 8px;font-size:10px;text-align:right;">Disc%</th>
+              <th style="padding:7px 8px;font-size:10px;text-align:center;">GST%</th>
+              <th style="padding:7px 8px;font-size:10px;text-align:center;">GST Type</th>
+              <th style="padding:7px 8px;font-size:10px;text-align:right;">Taxable</th>
+              <th style="padding:7px 8px;font-size:10px;text-align:right;">Total</th>
+              <th style="padding:7px 8px;font-size:10px;"></th>
+            </tr></thead>
+            <tbody>${itemRows}</tbody>
+          </table>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <button class="btn btn-g btn-sm" onclick="addItemRow()">+ Add Line</button>
+        </div>
+        <!-- Tax Summary -->
+        <div style="background:#f0fdf4;border:1px solid #a7f3d0;border-radius:10px;padding:12px 16px;margin-bottom:10px;">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:12px;">
+            <div><span style="color:var(--tm);">Taxable Amt</span><div style="font-weight:700;font-size:15px;">${fmt(taxSummary.taxable)}</div></div>
+            <div><span style="color:var(--tm);">CGST</span><div style="font-weight:700;font-size:15px;color:#059669;">${fmt(taxSummary.cgst)}</div></div>
+            <div><span style="color:var(--tm);">SGST</span><div style="font-weight:700;font-size:15px;color:#059669;">${fmt(taxSummary.sgst)}</div></div>
+            <div><span style="color:var(--tm);">IGST</span><div style="font-weight:700;font-size:15px;color:#7c3aed;">${fmt(taxSummary.igst)}</div></div>
+          </div>
+          ${taxSummary.tds>0?`<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #a7f3d0;display:flex;justify-content:space-between;font-size:12px;"><span style="color:#dc2626;font-weight:600;">TDS Deducted (${eid('v-tds')?.options[eid('v-tds')?.selectedIndex]?.text?.split('—')[0]||''})</span><span style="font-weight:700;color:#dc2626;">−${fmt(taxSummary.tds)}</span></div>`:''}
+          <div style="margin-top:8px;padding-top:8px;border-top:1px solid #a7f3d0;display:flex;justify-content:space-between;font-size:14px;font-weight:700;"><span>Grand Total</span><span style="color:#059669;">${fmt(taxSummary.grand)}</span></div>
+        </div>`:`
+        <!-- MANUAL ENTRIES -->
+        <div id="manual-entries">
+          <table class="et" style="margin-bottom:8px;">
+            <thead><tr><th style="width:44%">Account</th><th class="tr" style="width:22%">Debit (Dr)</th><th class="tr" style="width:22%">Credit (Cr)</th><th style="width:12%"></th></tr></thead>
+            <tbody id="erows">
+              ${vManualEntries.map((e,i)=>{
+                const accOpts=state.accounts.map(a=>`<option value="${a.id}" ${a.id===e.accId?'selected':''}>${a.id} — ${a.name}</option>`).join('');
+                const totDrM=vManualEntries.reduce((s,x)=>s+(x.dr||0),0);
+                const totCrM=vManualEntries.reduce((s,x)=>s+(x.cr||0),0);
+                return`<tr class="m-acc-row">
+                  <td><select class="fc m-acc" style="padding:4px 7px;font-size:12px;" onchange="vManualEntries[${i}].accId=this.value;renderVouchers()"><option value="">— Account —</option>${accOpts}</select></td>
+                  <td><input type="number" class="fc tr m-dr" style="padding:4px 7px;font-size:12px;" value="${e.dr||''}" min="0" placeholder="0" oninput="vManualEntries[${i}].dr=parseFloat(this.value)||0;renderVouchers()"></td>
+                  <td><input type="number" class="fc tr m-cr" style="padding:4px 7px;font-size:12px;" value="${e.cr||''}" min="0" placeholder="0" oninput="vManualEntries[${i}].cr=parseFloat(this.value)||0;renderVouchers()"></td>
+                  <td class="tc">${vManualEntries.length>2?`<button class="btn btn-d btn-sm" onclick="vManualEntries.splice(${i},1);renderVouchers()">✕</button>`:''}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+            <tfoot><tr style="${(()=>{const d=vManualEntries.reduce((s,e)=>s+(e.dr||0),0),c=vManualEntries.reduce((s,e)=>s+(e.cr||0),0);return Math.abs(d-c)<0.01&&d>0?'background:#ecfdf5':'background:#fef2f2';})()}">
+              <td style="padding:7px 10px;font-weight:700;font-size:12px;">TOTAL</td>
+              <td class="tr" style="padding:7px 10px;font-weight:700;color:#059669;">${fmt(vManualEntries.reduce((s,e)=>s+(e.dr||0),0))}</td>
+              <td class="tr" style="padding:7px 10px;font-weight:700;color:#dc2626;">${fmt(vManualEntries.reduce((s,e)=>s+(e.cr||0),0))}</td>
+              <td></td>
+            </tr></tfoot>
+          </table>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="btn btn-g btn-sm" onclick="vManualEntries.push({accId:'',dr:0,cr:0});renderVouchers()">+ Add Row</button>
+            <span style="font-size:11px;color:var(--tm);">Debit must equal Credit</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <button class="btn btn-p btn-sm" onclick="saveManualVoucher()">💾 Save Manual Voucher</button>
+          ${editVId?`<button class="btn btn-g btn-sm" onclick="cancelEdit()">✕ Cancel</button>`:''}
+        </div>`}
+        ${vMode==='smart'?`
+        <div style="display:flex;gap:8px;margin-top:12px;align-items:center;">
+          <button class="btn btn-p" onclick="showEntryPreviewAndSave()" style="font-size:13px;padding:9px 18px;">👁 Preview &amp; Post Voucher</button>
+          ${editVId?`<button class="btn btn-g" onclick="cancelEdit()">✕ Cancel</button>`:''}
+          <span style="font-size:10px;color:var(--tm);">Auto GST · TDS · AS-1 Compliant</span>
+        </div>`:``}
+      </div>
+    </div>
+
+    <!-- RIGHT: LIVE JOURNAL PREVIEW PANEL -->
+    <div>
+      <div style="font-weight:700;color:var(--tm);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">📒 Live Journal Entry Preview</div>
+      <div style="background:#fff;border:1.5px solid #2563eb;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(37,99,235,.12);">
+        <div style="background:#0f172a;color:#fff;padding:10px 14px;font-size:12px;font-weight:700;display:flex;justify-content:space-between;">
+          <span>As per Double Entry (AS-1)</span>
+          <span class="${bal?'':''}">
+            ${preview.length>0?`<span style="background:${bal?'#059669':'#dc2626'};border-radius:20px;padding:2px 10px;font-size:10px;">${bal?'✓ Balanced':'✗ Not Balanced'}</span>`:''}
+          </span>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:11.5px;">
+          <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0;">
+            <th style="padding:6px 8px;text-align:left;font-size:10px;color:#64748b;">Acc ID</th>
+            <th style="padding:6px 8px;text-align:left;font-size:10px;color:#64748b;">Account Name</th>
+            <th style="padding:6px 8px;text-align:left;font-size:10px;color:#64748b;">Tag</th>
+            <th style="padding:6px 8px;text-align:right;font-size:10px;color:#059669;">Dr ₹</th>
+            <th style="padding:6px 8px;text-align:right;font-size:10px;color:#dc2626;">Cr ₹</th>
+          </tr></thead>
+          <tbody id="preview-tbody">${previewRows||'<tr><td colspan="5" style="padding:16px;text-align:center;color:#94a3b8;font-size:11px;">Select items above to see journal entries</td></tr>'}</tbody>
+        </table>
+        ${preview.length>0?`
+        <div style="background:#f8fafc;border-top:2px solid #e2e8f0;padding:8px 12px;display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+          <div style="font-size:11px;color:#64748b;">Total Dr: <strong style="color:#059669;">${fmt(totDr)}</strong></div>
+          <div style="font-size:11px;color:#64748b;text-align:right;">Total Cr: <strong style="color:#dc2626;">${fmt(totCr)}</strong></div>
+        </div>`:''}
+      </div>
+      <!-- Voucher List -->
+      <div style="margin-top:16px;">
+        <div class="tb no-print" style="margin-bottom:8px;">
+          <div class="tg" style="flex-wrap:wrap;">${['All',...VT].map(t=>`<button class="t ${vFil===t?'act':''}" onclick="vFil='${t}';renderVouchers()">${t.length>8?t.slice(0,8)+'…':t}</button>`).join('')}</div>
+          <button class="btn btn-s" onclick="exportVouchers()" style="margin-left:auto;font-size:11px;padding:4px 9px;">⬇ XLS</button>
+        </div>
+        <div class="card"><table class="tbl">
+          <thead><tr><th>Voucher</th><th>Date</th><th>Type</th><th>Narration</th><th>Ref</th><th>Items</th><th class="tr">Amount</th><th class="no-print">Act</th></tr></thead>
+          <tbody>${rows||'<tr><td colspan="8" style="padding:20px;text-align:center;color:var(--tm)">No vouchers</td></tr>'}</tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── Item line helpers ──
+function calcLineTaxable(ln){ return Math.round((ln.qty||1)*(ln.rate||0)*(1-(ln.disc||0)/100)*100)/100; }
+function calcLineTotal(ln){
+  const t=calcLineTaxable(ln), g=ln.gstRate||0;
+  if(ln.gstType&&ln.gstType.includes('Exempt'))return t;
+  return Math.round(t*(1+g/100)*100)/100;
+}
+function calcTaxSummary(lines,vtype){
+  let taxable=0,cgst=0,sgst=0,igst=0;
+  lines.forEach(ln=>{
+    const t=calcLineTaxable(ln), g=ln.gstRate||0;
+    taxable+=t;
+    if(ln.gstType&&ln.gstType.includes('IGST')) igst+=Math.round(t*g)/100;
+    else if(!ln.gstType||ln.gstType.includes('Exempt')){}
+    else{ cgst+=Math.round(t*(g/2))/100; sgst+=Math.round(t*(g/2))/100; }
+  });
+  // TDS
+  let tds=0;
+  const tdsEl=eid('v-tds');
+  if(tdsEl&&tdsEl.value){
+    const sec=TDS_SECTIONS.find(s=>s.code===tdsEl.value);
+    if(sec) tds=Math.round(taxable*sec.rate)/100;
+  }
+  const grand=taxable+cgst+sgst+igst-tds;
+  return{taxable:Math.round(taxable*100)/100,cgst:Math.round(cgst*100)/100,sgst:Math.round(sgst*100)/100,igst:Math.round(igst*100)/100,tds:Math.round(tds*100)/100,grand:Math.round(grand*100)/100};
+}
+
+function computePreviewEntries(vtype, lines){
+  if(!lines||lines.every(ln=>!ln.rate||ln.rate===0))return[];
+  const entries=[];
+  const tax=calcTaxSummary(lines,vtype);
+  const isSales=['Sales','Debit Note'].includes(vtype);
+  const isPurchase=['Purchase','Credit Note'].includes(vtype);
+  const isReceipt=vtype==='Receipt';
+  const isPayment=vtype==='Payment';
+
+  // Find default accounts
+  const debtorAcc=state.accounts.find(a=>a.group==='Sundry Debtors');
+  const creditorAcc=state.accounts.find(a=>a.group==='Sundry Creditors');
+  const cashBankAcc=state.accounts.find(a=>a.group==='Cash & Bank'&&a.name.includes('Bank'))||state.accounts.find(a=>a.group==='Cash & Bank');
+
+  // Get party account if selected
+  const partyEl=eid('v-party');
+  const partyId=partyEl?.value||'';
+  let partyAccId='';
+  if(partyId){
+    const debtor=state.debtors.find(d=>d.id===partyId);
+    const vendor=state.vendors.find(v=>v.id===partyId);
+    if(debtor) partyAccId=debtorAcc?.id||'1003';
+    if(vendor) partyAccId=creditorAcc?.id||'2001';
+  }
+
+  if(isSales){
+    // Debit: Accounts Receivable (or party) for grand total
+    entries.push({accId:partyAccId||debtorAcc?.id||'1003',dr:tax.grand,cr:0,tag:'Debtor Dr'});
+    // Credit: each item's income account for taxable amount
+    const incGroups={};
+    lines.forEach(ln=>{
+      const it=(state.items||[]).find(i=>i.id===ln.itemId);
+      const accId=it?.incomeAccId||state.accounts.find(a=>a.type==='Income')?.id||'3001';
+      const t=calcLineTaxable(ln);
+      incGroups[accId]=(incGroups[accId]||0)+t;
+    });
+    Object.entries(incGroups).forEach(([accId,amt])=>entries.push({accId,dr:0,cr:Math.round(amt*100)/100,tag:'Sales Cr'}));
+    if(tax.cgst>0) entries.push({accId:'2002',dr:0,cr:tax.cgst,tag:'Output CGST'});
+    if(tax.sgst>0) entries.push({accId:'2003',dr:0,cr:tax.sgst,tag:'Output SGST'});
+    if(tax.igst>0) entries.push({accId:'2004',dr:0,cr:tax.igst,tag:'Output IGST'});
+    if(tax.tds>0){
+      entries.push({accId:'2005',dr:0,cr:tax.tds,tag:'TDS Payable Cr'});
+      entries[0].dr=Math.round((entries[0].dr-tax.tds)*100)/100;
+    }
+  } else if(isPurchase){
+    // Debit: each item's expense account for taxable
+    const expGroups={};
+    lines.forEach(ln=>{
+      const it=(state.items||[]).find(i=>i.id===ln.itemId);
+      const accId=it?.expenseAccId||state.accounts.find(a=>a.type==='Expense')?.id||'4001';
+      const t=calcLineTaxable(ln);
+      expGroups[accId]=(expGroups[accId]||0)+t;
+    });
+    Object.entries(expGroups).forEach(([accId,amt])=>entries.push({accId,dr:Math.round(amt*100)/100,cr:0,tag:'Purchase Dr'}));
+    if(tax.cgst>0) entries.push({accId:'1006',dr:tax.cgst,cr:0,tag:'Input CGST'});
+    if(tax.sgst>0) entries.push({accId:'1007',dr:tax.sgst,cr:0,tag:'Input SGST'});
+    if(tax.igst>0) entries.push({accId:'1008',dr:tax.igst,cr:0,tag:'Input IGST'});
+    // Credit: Accounts Payable for grand total - TDS
+    const net=tax.grand;
+    entries.push({accId:partyAccId||creditorAcc?.id||'2001',dr:0,cr:net,tag:'Creditor Cr'});
+    if(tax.tds>0) entries.push({accId:'2005',dr:0,cr:tax.tds,tag:'TDS Payable'});
+  } else if(isReceipt||isPayment){
+    const line=lines[0];
+    const t=calcLineTaxable(line);
+    if(isReceipt){
+      entries.push({accId:cashBankAcc?.id||'1001',dr:tax.grand,cr:0,tag:'Cash/Bank Dr'});
+      entries.push({accId:partyAccId||debtorAcc?.id||'1003',dr:0,cr:tax.grand,tag:'Debtor Cr'});
+    } else {
+      entries.push({accId:partyAccId||creditorAcc?.id||'2001',dr:tax.grand,cr:0,tag:'Creditor Dr'});
+      entries.push({accId:cashBankAcc?.id||'1002',dr:0,cr:tax.grand,tag:'Cash/Bank Cr'});
+    }
+    if(tax.tds>0&&isPayment){
+      const tdsSec=TDS_SECTIONS.find(s=>s.code===eid('v-tds')?.value);
+      entries.push({accId:'2005',dr:0,cr:tax.tds,tag:`TDS ${tdsSec?.code||''}`});
+      entries[1].cr=Math.round((entries[1].cr-tax.tds)*100)/100;
+    }
+  }
+  return entries.filter(e=>e.dr>0||e.cr>0);
+}
+
+function refreshPreview(){
+  const curType=eid('v-type')?.value||'Sales';
+  const preview=computePreviewEntries(curType,vItemLines);
+  const totDr=preview.reduce((s,e)=>s+(e.dr||0),0);
+  const totCr=preview.reduce((s,e)=>s+(e.cr||0),0);
+  const bal=Math.abs(totDr-totCr)<0.01;
+  const tbody=eid('preview-tbody');
+  if(tbody){
+    tbody.innerHTML=preview.map(e=>`
+      <tr style="font-size:11px;">
+        <td class="mono" style="color:#2563eb;padding:5px 8px;">${e.accId}</td>
+        <td style="padding:5px 8px;">${aN(e.accId)||e.accId}</td>
+        <td style="padding:5px 8px;"><span style="font-size:10px;background:#f1f5f9;border-radius:4px;padding:1px 6px;">${e.tag||''}</span></td>
+        <td class="tr" style="padding:5px 8px;color:#059669;font-weight:600;">${e.dr>0?fmt(e.dr):'—'}</td>
+        <td class="tr" style="padding:5px 8px;color:#dc2626;font-weight:600;">${e.cr>0?fmt(e.cr):'—'}</td>
+      </tr>`).join('')||'<tr><td colspan="5" style="padding:12px;text-align:center;color:#94a3b8;">Enter line items to preview</td></tr>';
+  }
+  // Update tax summary box
+  const tax=calcTaxSummary(vItemLines,curType);
+  const taxEl=eid('tax-grand');if(taxEl)taxEl.textContent=fmt(tax.grand);
+  // Update balance badge
+  const balBadge=eid('preview-bal');
+  if(balBadge){
+    const td2=preview.reduce((s,e)=>s+(e.dr||0),0),tc2=preview.reduce((s,e)=>s+(e.cr||0),0);
+    const b2=Math.abs(td2-tc2)<0.01&&preview.length>0;
+    balBadge.textContent=b2?'✓ Balanced':'✗ Not Balanced';
+    balBadge.style.background=b2?'#059669':'#dc2626';
+  }
+}
+
+function addItemRow(){vItemLines.push({itemId:'',desc:'',qty:1,rate:0,disc:0,gstRate:18,gstType:'CGST+SGST (Intra-state)'});renderVouchers();}
+function remItemRow(i){vItemLines.splice(i,1);renderVouchers();}
+function onItemSelect(i,itemId){
+  vItemLines[i].itemId=itemId;
+  const it=(state.items||[]).find(x=>x.id===itemId);
+  if(it){
+    vItemLines[i].desc=it.description||it.name;
+    vItemLines[i].rate=(['Sales','Debit Note'].includes(eid('v-type')?.value||'Sales'))?it.saleRate:it.purchaseRate;
+    vItemLines[i].gstRate=it.gstRate;
+  }
+  renderVouchers();
+}
+function onPartyChange(partyId,vtype){ refreshPreview(); }
+function onVTypeChange(type){
+  const partyEl=eid('v-party');
+  if(partyEl){
+    const list=['Sales','Debit Note','Receipt'].includes(type)?state.debtors:state.vendors;
+    partyEl.innerHTML=`<option value="">— No party —</option>`+list.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  }
+  refreshPreview();
+}
+
+function showEntryPreviewAndSave(){
+  const id=eid('v-id')?.value.trim()||'', dt=eid('v-date')?.value, tp=eid('v-type')?.value;
+  const nar=eid('v-nar')?.value.trim()||'', ref=eid('v-ref')?.value.trim()||'';
+  const partyId=eid('v-party')?.value||'', due=eid('v-due')?.value||'';
+  const tdsSection=eid('v-tds')?.value||'';
+  if(!nar)return alert('Narration is required');
+  if(!dt) return alert('Date is required');
+
+  const preview=computePreviewEntries(tp,vItemLines);
+  if(!preview.length)return alert('Please add at least one item line with amount');
+  const totDr=preview.reduce((s,e)=>s+(e.dr||0),0);
+  const totCr=preview.reduce((s,e)=>s+(e.cr||0),0);
+  const bal=Math.abs(totDr-totCr)<0.01;
+  const tax=calcTaxSummary(vItemLines,tp);
+  const items=vItemLines.filter(ln=>ln.rate>0).map(ln=>{
+    const t=calcLineTaxable(ln), g=ln.gstRate||0;
+    const igst=ln.gstType?.includes('IGST')?Math.round(t*g)/100:0;
+    const cgst=igst===0?Math.round(t*(g/2))/100:0;
+    const sgst=igst===0?Math.round(t*(g/2))/100:0;
+    return{name:ln.desc||(state.items||[]).find(i=>i.id===ln.itemId)?.name||'Item',
+      hsn:(state.items||[]).find(i=>i.id===ln.itemId)?.hsn||'',
+      qty:ln.qty,rate:ln.rate,gstRate:g,taxableAmt:t,cgst,sgst,igst,total:calcLineTotal(ln)};
+  });
+
+  const entryRows=preview.map(e=>`
+    <tr style="font-size:12px;">
+      <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;">
+        <span style="color:#2563eb;font-family:monospace;font-weight:600;">${e.accId}</span>
+        <span style="margin-left:8px;">${aN(e.accId)||e.accId}</span>
+        <span style="margin-left:6px;font-size:10px;background:#f1f5f9;border-radius:4px;padding:1px 6px;color:#64748b;">${e.tag||''}</span>
+      </td>
+      <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right;color:#059669;font-weight:700;font-family:monospace;">${e.dr>0?fmt(e.dr):'—'}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right;color:#dc2626;font-weight:700;font-family:monospace;">${e.cr>0?fmt(e.cr):'—'}</td>
+    </tr>`).join('');
+
+  openModal(`📒 Journal Entry Preview — ${tp} | ${id}`, `
+    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;">
+      <strong>📋 Voucher:</strong> ${id} &nbsp;|&nbsp; <strong>Date:</strong> ${fmtD(dt)} &nbsp;|&nbsp; <strong>Type:</strong> ${tp} &nbsp;|&nbsp; <strong>Narration:</strong> ${nar}
+      ${tdsSection?`&nbsp;|&nbsp; <strong>TDS:</strong> ${tdsSection}`:''}
+    </div>
+    <div style="margin-bottom:12px;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:8px;">As per Double-Entry (AS-1 / IND-AS 1)</div>
+      <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
+        <thead><tr style="background:#0f172a;color:#fff;">
+          <th style="padding:8px 10px;text-align:left;font-size:11px;">Account</th>
+          <th style="padding:8px 10px;text-align:right;font-size:11px;">Debit (Dr)</th>
+          <th style="padding:8px 10px;text-align:right;font-size:11px;">Credit (Cr)</th>
+        </tr></thead>
+        <tbody>${entryRows}</tbody>
+        <tfoot><tr style="background:#0f172a;color:#fff;font-weight:700;">
+          <td style="padding:8px 10px;font-size:12px;">TOTAL</td>
+          <td style="padding:8px 10px;text-align:right;">${fmt(totDr)}</td>
+          <td style="padding:8px 10px;text-align:right;">${fmt(totCr)}</td>
+        </tr></tfoot>
+      </table>
+    </div>
+    <div style="background:${bal?'#ecfdf5':'#fef2f2'};border:1px solid ${bal?'#a7f3d0':'#fca5a5'};border-radius:8px;padding:9px 14px;margin-bottom:14px;font-size:12px;font-weight:700;color:${bal?'#065f46':'#991b1b'};">
+      ${bal?'✅ Entry is Balanced — Ready to Post':'❌ Entry Not Balanced — Cannot Post. Difference: '+fmt(Math.abs(totDr-totCr))}
+    </div>
+    ${tax.cgst>0||tax.sgst>0||tax.igst>0?`
+    <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:9px 14px;margin-bottom:14px;font-size:12px;">
+      <strong>GST Summary:</strong> Taxable: ${fmt(tax.taxable)} | CGST: ${fmt(tax.cgst)} | SGST: ${fmt(tax.sgst)} | IGST: ${fmt(tax.igst)}
+      ${tax.tds>0?` | TDS: ${fmt(tax.tds)}`:''}
+      | <strong>Net: ${fmt(tax.grand)}</strong>
+    </div>`:''}
+    <div style="display:flex;gap:10px;">
+      ${bal?`<button class="btn btn-s" onclick="closeModal();_commitZohoVoucher('${id}','${dt}','${tp}','${encodeURIComponent(nar)}','${ref}','${partyId}','${due}','${tdsSection}')" style="flex:1;">✅ Confirm &amp; Post Voucher</button>`:''}
+      <button class="btn btn-g" onclick="closeModal()" style="flex:1;">✏ Go Back &amp; Edit</button>
+    </div>`);
+}
+
+function _commitZohoVoucher(id,dt,tp,narEnc,ref,partyId,due,tdsSection){
+  const nar=decodeURIComponent(narEnc);
+  const entries=computePreviewEntries(tp,vItemLines);
+  const tax=calcTaxSummary(vItemLines,tp);
+  const items=vItemLines.filter(ln=>ln.rate>0).map(ln=>{
+    const t=calcLineTaxable(ln),g=ln.gstRate||0;
+    const igst=ln.gstType?.includes('IGST')?Math.round(t*g)/100:0;
+    const cgst=igst===0?Math.round(t*(g/2))/100:0, sgst=igst===0?Math.round(t*(g/2))/100:0;
+    return{name:ln.desc||(state.items||[]).find(i=>i.id===ln.itemId)?.name||'Item',
+      hsn:(state.items||[]).find(i=>i.id===ln.itemId)?.hsn||'',
+      qty:ln.qty,rate:ln.rate,gstRate:g,taxableAmt:t,cgst,sgst,igst,total:calcLineTotal(ln)};
+  });
+  const vobj={id,date:dt,type:tp,narration:nar,ref,partyId,dueDate:due,entries,
+    gstType:vItemLines[0]?.gstType||'',tdsSection,items,
+    totals:{taxable:tax.taxable,cgst:tax.cgst,sgst:tax.sgst,igst:tax.igst,tds:tax.tds,grand:tax.grand}};
+  if(editVId){
+    state.vouchers=state.vouchers.map(v=>v.id===editVId?vobj:v);editVId=null;
+  }else{
+    if(state.vouchers.find(v=>v.id===id))return alert('Voucher ID already exists');
+    state.vouchers.push(vobj);
+  }
+  scheduleSave();
+  showToast(`✅ ${tp} Voucher <strong>${id}</strong> posted successfully!`);
+  vItemLines=[{itemId:'',desc:'',qty:1,rate:0,disc:0,gstRate:18,gstType:'CGST+SGST (Intra-state)'}];
+  renderVouchers();
+}
+
+function editVoucher(id){
+  const v=state.vouchers.find(x=>x.id===id);if(!v)return;
+  editVId=id;
+  if(v.items&&v.items.length>0){
+    vMode='smart';
+    vItemLines=v.items.map(it=>({itemId:'',desc:it.name,qty:it.qty,rate:it.rate,disc:0,gstRate:it.gstRate,gstType:v.gstType||'CGST+SGST (Intra-state)'}));
+  } else { vMode='manual'; vManualEntries=v.entries.map(e=>({accId:e.accId,dr:e.dr||0,cr:e.cr||0})); if(vManualEntries.length<2)vManualEntries.push({accId:'',dr:0,cr:0}); }
+  renderVouchers();
+  setTimeout(()=>{
+    if(eid('v-id'))eid('v-id').value=v.id;
+    if(eid('v-date'))eid('v-date').value=v.date;
+    if(eid('v-type')){eid('v-type').value=v.type;onVTypeChange(v.type);}
+    if(eid('v-ref'))eid('v-ref').value=v.ref||'';
+    if(eid('v-nar'))eid('v-nar').value=v.narration;
+    if(eid('v-due'))eid('v-due').value=v.dueDate||'';
+    if(eid('v-tds'))eid('v-tds').value=v.tdsSection||'';
+    if(eid('v-party')&&v.partyId){const opt=eid('v-party').querySelector(`option[value="${v.partyId}"]`);if(opt)opt.selected=true;}
+    refreshPreview();
+  },80);
+}
+function cancelEdit(){editVId=null;vItemLines=[{itemId:'',desc:'',qty:1,rate:0,disc:0,gstRate:18,gstType:'CGST+SGST (Intra-state)'}];vManualEntries=[{accId:'',dr:0,cr:0},{accId:'',dr:0,cr:0}];renderVouchers();}
+function saveManualVoucher(){
+  const id=eid('v-id')?.value.trim(),dt=eid('v-date')?.value,tp=eid('v-type')?.value;
+  const nar=eid('v-nar')?.value.trim()||'',ref=eid('v-ref')?.value.trim()||'';
+  const partyId=eid('v-party')?.value||'',due=eid('v-due')?.value||'',tdsSection=eid('v-tds')?.value||'';
+  if(!id)return alert('Voucher ID is required');
+  if(!dt)return alert('Date is required');
+  if(!nar)return alert('Narration is required');
+  // Read manual entry rows
+  const entries=[];
+  document.querySelectorAll('.m-acc-row').forEach((row,i)=>{
+    const accId=row.querySelector('.m-acc')?.value||'';
+    const dr=parseFloat(row.querySelector('.m-dr')?.value)||0;
+    const cr=parseFloat(row.querySelector('.m-cr')?.value)||0;
+    if(accId&&(dr>0||cr>0))entries.push({accId,dr,cr});
+  });
+  if(entries.length<2)return alert('Add at least 2 account entries');
+  const totDr=entries.reduce((s,e)=>s+(e.dr||0),0);
+  const totCr=entries.reduce((s,e)=>s+(e.cr||0),0);
+  if(Math.abs(totDr-totCr)>0.01)return alert(`Entry not balanced!\nDebit: ₹${totDr.toFixed(2)} | Credit: ₹${totCr.toFixed(2)}\nDifference: ₹${Math.abs(totDr-totCr).toFixed(2)}`);
+  const vobj={id,date:dt,type:tp,narration:nar,ref,partyId,dueDate:due,entries,gstType:'',tdsSection,items:[],totals:{taxable:0,cgst:0,sgst:0,igst:0,tds:0,grand:totDr}};
+  if(editVId){state.vouchers=state.vouchers.map(v=>v.id===editVId?vobj:v);editVId=null;}
+  else{if(state.vouchers.find(v=>v.id===id))return alert('Voucher ID already exists');state.vouchers.push(vobj);}
+  scheduleSave();
+  showToast(`✅ ${tp} Voucher <strong>${id}</strong> posted!`);
+  vItemLines=[{itemId:'',desc:'',qty:1,rate:0,disc:0,gstRate:18,gstType:'CGST+SGST (Intra-state)'}];
+  editVId=null;renderVouchers();
+}
+function delVoucher(id){if(!confirm('Delete voucher?'))return;state.vouchers=state.vouchers.filter(v=>v.id!==id);scheduleSave();renderVouchers();}
+function exportVouchers(){
+  exportXLS([[state.company,'','','',''],['VOUCHER REGISTER','','','',''],
+    ['Voucher No.','Date','Type','Narration','Ref','Amount'],
+    ...state.vouchers.map(v=>[v.id,v.date,v.type,v.narration,v.ref||'',v.entries.reduce((s,e)=>s+(e.dr||0),0)])
+  ],'Vouchers','Voucher_Register.xlsx');
+}
+
+// ── PDF PRINT for SALES / CREDIT NOTE ──
+function printVoucher(id){
+  const v=state.vouchers.find(x=>x.id===id);if(!v)return;
+  const party=v.partyId?(['Sales','Debit Note'].includes(v.type)?state.debtors.find(d=>d.id===v.partyId):state.vendors.find(vd=>vd.id===v.partyId)):null;
+  const totAmt=v.totals?.grand||v.entries.reduce((s,e)=>s+(e.dr||0),0);
+  const itemRows=(v.items||[]).length>0?v.items.map(it=>`<tr><td>${it.name}</td><td>${it.hsn||'—'}</td><td style="text-align:right">${it.qty}</td><td style="text-align:right">${fmt(it.rate)}</td><td style="text-align:right">${fmt(it.taxableAmt)}</td><td style="text-align:right">${fmt(it.cgst)}</td><td style="text-align:right">${fmt(it.sgst)}</td><td style="text-align:right">${fmt(it.igst)}</td><td style="text-align:right;font-weight:700;">${fmt(it.total)}</td></tr>`).join(''):'';
+  const win=window.open('','_blank','width=900,height=750');
+  win.document.write(`<!DOCTYPE html><html><head><title>${v.type} — ${v.id}</title>
+  <style>body{font-family:'Segoe UI',sans-serif;margin:0;padding:28px;color:#1e293b;font-size:13px;}
+  .inv-header{display:flex;justify-content:space-between;border-bottom:3px solid #2563eb;padding-bottom:16px;margin-bottom:16px;}
+  .co-name{font-size:22px;font-weight:700;}.co-info{font-size:11px;color:#64748b;margin-top:3px;}
+  .inv-title{font-size:26px;font-weight:700;color:#2563eb;text-align:right;}.inv-no{font-size:13px;color:#64748b;text-align:right;}
+  table{width:100%;border-collapse:collapse;margin-bottom:16px;}th{background:#0f172a;color:#fff;padding:8px 10px;font-size:11px;}
+  td{padding:8px 10px;border-bottom:1px solid #e2e8f0;}.grandtot{background:#0f172a;color:#fff;padding:12px 16px;border-radius:8px;display:flex;justify-content:space-between;font-size:15px;font-weight:700;margin-bottom:16px;}
+  .gst-box{background:#f0fdf4;border:1px solid #a7f3d0;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;}
+  .footer{border-top:1px solid #e2e8f0;padding-top:12px;font-size:10px;color:#94a3b8;display:flex;justify-content:space-between;}
+  @media print{button{display:none!important;}}</style></head><body>
+  <div class="inv-header">
+    <div><div class="co-name">${state.company}</div><div class="co-info">GSTIN: ${state.gstin||'—'} | FY: ${state.fy}</div></div>
+    <div><div class="inv-title">${v.type.toUpperCase()}</div><div class="inv-no"># ${v.id} | ${fmtD(v.date)}</div></div>
+  </div>
+  ${party?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#94a3b8;margin-bottom:5px;">Bill To</div>
+      <div style="font-size:14px;font-weight:700;">${party.name}</div>
+      <div style="font-size:11px;color:#64748b;">${[party.address,party.city,party.state,party.pincode].filter(Boolean).join(', ')}</div>
+      ${party.gstRegistered?`<div style="font-size:11px;font-weight:600;margin-top:4px;">GSTIN: ${party.gstn}</div>`:''}
+    </div>
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#94a3b8;margin-bottom:5px;">Details</div>
+      ${v.ref?`<div style="font-size:12px;">Ref: <strong>${v.ref}</strong></div>`:''}
+      ${v.dueDate?`<div style="font-size:12px;color:#dc2626;">Due: <strong>${fmtD(v.dueDate)}</strong></div>`:''}
+      ${v.tdsSection?`<div style="font-size:12px;">TDS: <strong>${v.tdsSection}</strong></div>`:''}
+    </div>
+  </div>`:''}
+  ${(v.items||[]).length>0?`
+  <table><thead><tr><th>Item</th><th>HSN/SAC</th><th style="text-align:right">Qty</th><th style="text-align:right">Rate</th><th style="text-align:right">Taxable</th><th style="text-align:right">CGST</th><th style="text-align:right">SGST</th><th style="text-align:right">IGST</th><th style="text-align:right">Total</th></tr></thead>
+  <tbody>${itemRows}</tbody></table>
+  <div class="gst-box"><strong>GST Summary:</strong> Taxable: ${fmt(v.totals?.taxable||0)} | CGST: ${fmt(v.totals?.cgst||0)} | SGST: ${fmt(v.totals?.sgst||0)} | IGST: ${fmt(v.totals?.igst||0)}${v.totals?.tds?` | TDS Deducted: ${fmt(v.totals.tds)}`:''}</div>`:''}
+  <div class="grandtot"><span>GRAND TOTAL</span><span>${fmt(totAmt)}</span></div>
+  <div class="footer"><span>Generated by AccounTally Pro (Zoho-Style)</span><span>${new Date().toLocaleString('en-IN')}</span></div>
+  <div style="text-align:center;margin-top:18px;"><button onclick="window.print()" style="padding:9px 22px;background:#2563eb;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;">🖨 Print / PDF</button></div>
+  </body></html>`);
+  win.document.close();
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  PAGE: DAY BOOK
+// ══════════════════════════════════════════════════════════════════
+function pgDayBook(){renderDayBook(state.fyStart,state.fyEnd);}
+function renderDayBook(df,dt){
+  const fil=state.vouchers.filter(v=>v.date>=df&&v.date<=dt).sort((a,b)=>a.date.localeCompare(b.date));
+  let rows='';
+  fil.forEach((v,vi)=>{v.entries.forEach((e,ei)=>{
+    rows+=`<tr class="${vi%2?'alt':''}">
+      ${ei===0?`<td rowspan="${v.entries.length}">${fmtD(v.date)}</td><td rowspan="${v.entries.length}" class="mono tb-">${v.id}</td><td rowspan="${v.entries.length}"><span class="badge ${bcol(v.type)}">${v.type}</span></td>`:''}
+      <td>${aN(e.accId)}</td>
+      ${ei===0?`<td rowspan="${v.entries.length}" class="tm-" style="font-size:11px;">${v.narration}</td>`:''}
+      <td class="tr tg-">${e.dr?fmt(e.dr):''}</td><td class="tr tr-">${e.cr?fmt(e.cr):''}</td>
+    </tr>`;
+  });});
+  eid('content').innerHTML=`
+  <div class="tb no-print">
+    <span class="fl" style="white-space:nowrap;">From:</span><input type="date" class="fc" id="db-f" value="${df}" style="width:150px;">
+    <span class="fl" style="white-space:nowrap;">To:</span><input type="date" class="fc" id="db-t" value="${dt}" style="width:150px;">
+    <button class="btn btn-p" onclick="renderDayBook(eid('db-f').value,eid('db-t').value)">Filter</button>
+    <button class="btn btn-s" onclick="exportDayBook(eid('db-f').value,eid('db-t').value)" style="margin-left:auto;">⬇ Excel</button>
+  </div>
+  <div class="card"><table class="tbl">
+    <thead><tr><th>Date</th><th>Voucher</th><th>Type</th><th>Account</th><th>Narration</th><th class="tr">Debit</th><th class="tr">Credit</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--tm)">No transactions in this period</td></tr>'}</tbody>
+  </table></div>`;
+}
+function exportDayBook(df,dt){
+  const fil=state.vouchers.filter(v=>v.date>=df&&v.date<=dt).sort((a,b)=>a.date.localeCompare(b.date));
+  const data=[[state.company,'','','','','',''],['DAY BOOK','','','','','',''],['Period:',`${df} to ${dt}`,'','','','',''],[]
+    ,['Date','Voucher','Type','Account','Narration','Debit','Credit']];
+  fil.forEach(v=>v.entries.forEach(e=>data.push([v.date,v.id,v.type,aN(e.accId),v.narration,e.dr||0,e.cr||0])));
+  exportXLS(data,'Day Book',`Day_Book_${df}_to_${dt}.xlsx`);
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  PAGE: CASH BOOK
+// ══════════════════════════════════════════════════════════════════
+function pgCashBook(){const ca=state.accounts.filter(a=>a.group==='Cash & Bank');renderCashBook(ca[0]?.id||'');}
+function renderCashBook(selId){
+  const L=computeLedger();const ca=state.accounts.filter(a=>a.group==='Cash & Bank');
+  const acc=L[selId];let rb=acc?(acc.nature==='Dr'?acc.balance:-acc.balance):0;
+  let rows='';
+  if(acc){
+    rows+=`<tr style="background:#eff6ff;"><td>—</td><td class="tb-">Opening Balance</td><td></td><td class="tr tg-">${acc.nature==='Dr'?fmt(acc.balance):''}</td><td class="tr tr-">${acc.nature==='Cr'?fmt(acc.balance):''}</td><td class="tr"><strong>${fmt(Math.abs(rb))} ${rb>=0?'Dr':'Cr'}</strong></td></tr>`;
+    acc.txns.sort((a,b)=>a.date.localeCompare(b.date)).forEach((t,i)=>{rb+=(t.dr||0)-(t.cr||0);
+      rows+=`<tr class="${i%2?'alt':''}"><td>${fmtD(t.date)}</td><td>${t.narration}</td><td class="mono tb-">${t.vno}</td><td class="tr tg-">${t.dr?fmt(t.dr):''}</td><td class="tr tr-">${t.cr?fmt(t.cr):''}</td><td class="tr"><strong>${fmt(Math.abs(rb))} ${rb>=0?'Dr':'Cr'}</strong></td></tr>`;
+    });
+  }
+  eid('content').innerHTML=`
+  <div class="tb no-print">
+    <select class="fc" onchange="renderCashBook(this.value)" style="min-width:220px;">${ca.map(a=>`<option value="${a.id}" ${a.id===selId?'selected':''}>${a.name}</option>`).join('')}</select>
+    ${acc?`<span class="fy-badge">Closing: ${fmt(acc.closingDr||acc.closingCr)}</span>`:''}
+    <button class="btn btn-s" onclick="exportCashBook('${selId}')" style="margin-left:auto;">⬇ Excel</button>
+  </div>
+  ${acc?`<div class="card"><div class="ch">Cash Book — ${acc.name}</div>
+  <table class="tbl"><thead><tr><th>Date</th><th>Particulars</th><th>Voucher</th><th class="tr">Receipts (Dr)</th><th class="tr">Payments (Cr)</th><th class="tr">Balance</th></tr></thead>
+  <tbody>${rows}</tbody><tfoot><tr class="tf"><td colspan="3">CLOSING BALANCE</td><td class="tr">${acc.closingDr?fmt(acc.closingDr):''}</td><td class="tr">${acc.closingCr?fmt(acc.closingCr):''}</td><td class="tr">${fmt(acc.closingDr||acc.closingCr)}</td></tr></tfoot>
+  </table></div>`:'<div class="al al-w">No Cash & Bank accounts found.</div>'}`;
+}
+function exportCashBook(selId){
+  const L=computeLedger();const acc=L[selId];if(!acc)return;
+  let rb=acc.nature==='Dr'?acc.balance:-acc.balance;
+  const data=[[state.company,'','','','',''],['CASH BOOK','','','','',''],['Account:',acc.name,'','','',''],[]
+    ,['Date','Particulars','Voucher No.','Receipts (Dr)','Payments (Cr)','Balance']
+    ,['','Opening Balance','',acc.nature==='Dr'?acc.balance:'',acc.nature==='Cr'?acc.balance:'',Math.abs(rb)]
+    ,...acc.txns.sort((a,b)=>a.date.localeCompare(b.date)).map(t=>{rb+=(t.dr||0)-(t.cr||0);return[t.date,t.narration,t.vno,t.dr||'',t.cr||'',Math.abs(rb)];})
+    ,['','Closing Balance','',acc.closingDr||'',acc.closingCr||'',acc.closingDr||acc.closingCr]];
+  exportXLS(data,'Cash Book',`Cash_Book_${acc.name.replace(/\s+/g,'_')}.xlsx`);
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  PAGE: LEDGER
+// ══════════════════════════════════════════════════════════════════
+function pgLedger(){renderLedger(state.accounts[0]?.id||'');}
+function renderLedger(selId){
+  const L=computeLedger();const acc=L[selId];let rb=acc?(acc.nature==='Dr'?acc.balance:-acc.balance):0;
+  let rows='';
+  if(acc){
+    rows+=`<tr style="background:#eff6ff;"><td>—</td><td class="tb-">Opening Balance</td><td></td><td></td><td class="tr tg-">${acc.nature==='Dr'?fmtN(acc.balance):''}</td><td class="tr tr-">${acc.nature==='Cr'?fmtN(acc.balance):''}</td><td class="tr"><strong>${fmtN(Math.abs(rb))} ${rb>=0?'Dr':'Cr'}</strong></td></tr>`;
+    acc.txns.sort((a,b)=>a.date.localeCompare(b.date)).forEach((t,i)=>{rb+=(t.dr||0)-(t.cr||0);
+      rows+=`<tr class="${i%2?'alt':''}"><td>${fmtD(t.date)}</td><td>${t.narration}</td><td class="mono tb-">${t.vno}</td><td><span class="badge ${bcol(t.vtype)}">${t.vtype}</span></td><td class="tr tg-">${t.dr?fmtN(t.dr):''}</td><td class="tr tr-">${t.cr?fmtN(t.cr):''}</td><td class="tr"><strong>${fmtN(Math.abs(rb))} ${rb>=0?'Dr':'Cr'}</strong></td></tr>`;
+    });
+  }
+  const aOpts=state.accounts.map(a=>`<option value="${a.id}" ${a.id===selId?'selected':''}>${a.id} — ${a.name}</option>`).join('');
+  eid('content').innerHTML=`
+  <div class="tb no-print">
+    <select class="fc" onchange="renderLedger(this.value)" style="min-width:280px;">${aOpts}</select>
+    <button class="btn btn-s" onclick="exportLedger('${selId}')" style="margin-left:auto;">⬇ Excel</button>
+  </div>
+  ${acc?`<div class="card"><div class="ch">${acc.name} <span style="font-size:11px;opacity:.7;font-weight:400;">${acc.group} | ${acc.type}</span></div>
+  <table class="tbl"><thead><tr><th>Date</th><th>Particulars</th><th>Voucher</th><th>Type</th><th class="tr">Debit</th><th class="tr">Credit</th><th class="tr">Balance</th></tr></thead>
+  <tbody>${rows}</tbody><tfoot><tr class="tf"><td colspan="4">CLOSING BALANCE</td><td class="tr">${acc.closingDr?fmtN(acc.closingDr):''}</td><td class="tr">${acc.closingCr?fmtN(acc.closingCr):''}</td><td class="tr">${fmtN(acc.closingDr||acc.closingCr)} ${acc.closingDr>0?'Dr':'Cr'}</td></tr></tfoot>
+  </table></div>`:''}`;
+}
+function exportLedger(selId){
+  const L=computeLedger();const acc=L[selId];if(!acc)return;
+  let rb=acc.nature==='Dr'?acc.balance:-acc.balance;
+  const data=[[state.company,'','','','','',''],['LEDGER','','','','','',''],['Account:',acc.name,'Group:',acc.group,'Type:',acc.type,''],[]
+    ,['Date','Particulars','Voucher','Type','Debit','Credit','Balance']
+    ,['','Opening Balance','','',acc.nature==='Dr'?acc.balance:'',acc.nature==='Cr'?acc.balance:'',Math.abs(rb)]
+    ,...acc.txns.sort((a,b)=>a.date.localeCompare(b.date)).map(t=>{rb+=(t.dr||0)-(t.cr||0);return[t.date,t.narration,t.vno,t.vtype,t.dr||'',t.cr||'',Math.abs(rb)];})
+    ,['','CLOSING BALANCE','','',acc.closingDr||'',acc.closingCr||'',acc.closingDr||acc.closingCr]];
+  exportXLS(data,'Ledger',`Ledger_${acc.name.replace(/\s+/g,'_')}.xlsx`);
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  PAGE: TRIAL BALANCE
+// ══════════════════════════════════════════════════════════════════
+function pgTrial(){
+  const L=computeLedger();const rows=state.accounts.map(a=>({...a,...L[a.id]}));
+  const totDr=rows.reduce((s,r)=>s+(r.closingDr||0),0),totCr=rows.reduce((s,r)=>s+(r.closingCr||0),0);
+  const bal=Math.abs(totDr-totCr)<1;
+  let tableRows='';
+  ['Asset','Liability','Income','Expense','Capital'].forEach(type=>{
+    const tr=rows.filter(r=>r.type===type);if(!tr.length)return;
+    tableRows+=`<tr style="background:#f1f5f9;"><td colspan="4" style="font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#475569;padding:8px 13px;">${type}s</td></tr>`;
+    tr.forEach((r,i)=>tableRows+=`<tr class="${i%2?'alt':''}">
+      <td class="mono tb-">${r.id}</td><td>${r.name} <span class="tm-" style="font-size:10px;">(${r.group})</span></td>
+      <td class="tr tg-">${r.closingDr?fmtN(r.closingDr):'—'}</td><td class="tr tr-">${r.closingCr?fmtN(r.closingCr):'—'}</td>
+    </tr>`);
+  });
+  eid('content').innerHTML=`
+  <div class="tb no-print">
+    <div class="${bal?'al al-s':'al al-d'}" style="margin:0;padding:8px 13px;">${bal?'✓ Trial Balance is Balanced':'⚠ Not Balanced — Diff: '+fmt(Math.abs(totDr-totCr))}</div>
+    <button class="btn btn-s" onclick="exportTrial()" style="margin-left:auto;">⬇ Excel</button>
+  </div>
+  <div class="card"><table class="tbl">
+    <thead><tr><th style="width:13%">Acc. ID</th><th>Account Name</th><th class="tr" style="width:22%">Debit (Dr)</th><th class="tr" style="width:22%">Credit (Cr)</th></tr></thead>
+    <tbody>${tableRows}</tbody>
+    <tfoot><tr class="tf"><td colspan="2" class="tr">GRAND TOTAL</td><td class="tr">${fmtN(totDr)}</td><td class="tr">${fmtN(totCr)}</td></tr></tfoot>
+  </table></div>`;
+}
+function exportTrial(){
+  const L=computeLedger();const rows=state.accounts.map(a=>({...a,...L[a.id]}));
+  const totDr=rows.reduce((s,r)=>s+(r.closingDr||0),0),totCr=rows.reduce((s,r)=>s+(r.closingCr||0),0);
+  exportXLS([[state.company,'','',''],['TRIAL BALANCE','','',''],['Financial Year:',state.fy,'',''],[]
+    ,['Account ID','Account Name','Debit (Dr)','Credit (Cr)']
+    ,...rows.map(r=>[r.id,r.name,r.closingDr||0,r.closingCr||0])
+    ,['','TOTAL',totDr,totCr]],'Trial Balance','Trial_Balance.xlsx');
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  PAGE: P&L
+// ══════════════════════════════════════════════════════════════════
+function pgPnL(){
+  const L=computeLedger();
+  const aL=(t,g)=>state.accounts.filter(a=>a.type===t&&(g?a.group===g:true)).map(a=>({...a,...L[a.id]}));
+  const sI=aL('Income','Sales Accounts'),dI=aL('Income','Direct Income'),inI=aL('Income','Indirect Income');
+  const pE=aL('Expense','Purchase Accounts'),dE=aL('Expense','Direct Expenses'),inE=aL('Expense','Indirect Expenses');
+  const sC=arr=>arr.reduce((s,a)=>s+(a.closingCr||0),0),sD=arr=>arr.reduce((s,a)=>s+(a.closingDr||0),0);
+  const gI=sC(sI)+sC(dI),gE=sD(pE)+sD(dE),gP=gI-gE,iI=sC(inI),iE=sD(inE),nP=gP+iI-iE;
+  const rows=(arr,t='cr')=>arr.length?arr.map(a=>`<div class="rr"><span class="rrl">${a.name}</span><span class="rrv">${fmt(t==='cr'?a.closingCr:a.closingDr)}</span></div>`).join(''):`<div class="rr"><span class="rrl tm-" style="font-style:italic;">No entries</span></div>`;
+  eid('content').innerHTML=`
+  <div class="tb no-print" style="margin-bottom:14px;">
+    <div style="font-weight:700;font-size:14px;">Profit & Loss — FY ${state.fy}</div>
+    <button class="btn btn-s" onclick="exportPnL()" style="margin-left:auto;">⬇ Excel</button>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px;">
+    <div class="sc ${gP>=0?'sc-g':'sc-r'}" style="border-radius:12px;"><div class="sl">Gross ${gP>=0?'Profit':'Loss'}</div><div class="sv">${fmt(Math.abs(gP))}</div></div>
+    <div class="sc ${nP>=0?'sc-b':'sc-r'}" style="border-radius:12px;"><div class="sl">Net ${nP>=0?'Profit':'Loss'}</div><div class="sv">${fmt(Math.abs(nP))}</div></div>
+    <div class="sc sc-p" style="border-radius:12px;"><div class="sl">Net Margin</div><div class="sv">${gI>0?((nP/gI)*100).toFixed(1):0}%</div></div>
+  </div>
+  <div class="g2">
+    <div class="rp"><div style="font-size:15px;font-weight:700;padding-bottom:11px;border-bottom:2px solid var(--bdr);margin-bottom:10px;">📈 Income</div>
+      <div class="rst" style="margin-top:0;">Sales / Direct Income</div>${rows([...sI,...dI])}
+      <div class="rtot rt-g"><span>Gross Income</span><span>${fmt(gI)}</span></div>
+      <div class="rst">Indirect Income</div>${rows(inI)}
+      <div class="rg"><span>TOTAL INCOME</span><span>${fmt(gI+iI)}</span></div>
+    </div>
+    <div class="rp"><div style="font-size:15px;font-weight:700;padding-bottom:11px;border-bottom:2px solid var(--bdr);margin-bottom:10px;">📉 Expenses</div>
+      <div class="rst" style="margin-top:0;">Purchase / Direct Expenses</div>${rows([...pE,...dE],'dr')}
+      <div class="rtot rt-r"><span>Gross Expenses</span><span>${fmt(gE)}</span></div>
+      <div class="rst">Indirect Expenses</div>${rows(inE,'dr')}
+      <div class="rtot rt-r" style="margin-top:8px;"><span>Total Expenses</span><span>${fmt(gE+iE)}</span></div>
+      <div class="rg" style="background:${nP>=0?'#1e3a6e':'#7f1d1d'};margin-top:10px;"><span>NET ${nP>=0?'PROFIT':'LOSS'}</span><span>${fmt(Math.abs(nP))}</span></div>
+    </div>
+  </div>`;
+}
+function exportPnL(){
+  const L=computeLedger();
+  const aL=(t,g)=>state.accounts.filter(a=>a.type===t&&(g?a.group===g:true)).map(a=>({...a,...L[a.id]}));
+  const sI=aL('Income','Sales Accounts'),dI=aL('Income','Direct Income'),inI=aL('Income','Indirect Income');
+  const pE=aL('Expense','Purchase Accounts'),dE=aL('Expense','Direct Expenses'),inE=aL('Expense','Indirect Expenses');
+  const sC=arr=>arr.reduce((s,a)=>s+(a.closingCr||0),0),sD=arr=>arr.reduce((s,a)=>s+(a.closingDr||0),0);
+  const gI=sC(sI)+sC(dI),gE=sD(pE)+sD(dE),iI=sC(inI),iE=sD(inE),nP=gI-gE+iI-iE;
+  exportXLS([[state.company,''],['PROFIT & LOSS',''],['FY:',state.fy],[],
+    ['INCOME','Amount'],['Sales / Direct',''],[...[...sI,...dI].map(a=>['  '+a.name,a.closingCr||0])],
+    ['Gross Income',gI],[],['Indirect Income',''],[...inI.map(a=>['  '+a.name,a.closingCr||0])],[],
+    ['EXPENSES',''],['Purchase / Direct',''],[...[...pE,...dE].map(a=>['  '+a.name,a.closingDr||0])],
+    ['Gross Expenses',gE],[],['Indirect Expenses',''],[...inE.map(a=>['  '+a.name,a.closingDr||0])],[],
+    ['NET PROFIT / (LOSS)',nP]],'P&L',`Profit_Loss_FY${state.fy}.xlsx`);
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  PAGE: BALANCE SHEET
+// ══════════════════════════════════════════════════════════════════
+function pgBalance(){
+  const L=computeLedger();
+  const aL=t=>state.accounts.filter(a=>a.type===t).map(a=>({...a,...L[a.id]}));
+  const cap=aL('Capital'),liab=aL('Liability'),assets=aL('Asset');
+  const incR=aL('Income'),expR=aL('Expense');
+  const nP=incR.reduce((s,a)=>s+(a.closingCr||0),0)-expR.reduce((s,a)=>s+(a.closingDr||0),0);
+  const totCap=cap.reduce((s,a)=>s+(a.closingCr||0),0);
+  const totLiab=liab.reduce((s,a)=>s+(a.closingCr||0),0);
+  const totAssets=assets.reduce((s,a)=>s+(a.closingDr||0),0);
+  const totSrc=totCap+nP+totLiab;const bal=Math.abs(totSrc-totAssets)<1;
+  const rows=(arr,k='closingCr')=>arr.map(a=>`<div class="rr"><span class="rrl">${a.name}</span><span class="rrv">${fmt(a[k]||0)}</span></div>`).join('');
+  eid('content').innerHTML=`
+  <div class="tb no-print">
+    <div style="font-weight:700;font-size:14px;">Balance Sheet — FY ${state.fy}</div>
+    <div class="${bal?'al al-s':'al al-d'}" style="margin:0;padding:6px 12px;font-size:11px;">${bal?'✓ Balanced':'⚠ Diff: '+fmt(Math.abs(totSrc-totAssets))}</div>
+    <button class="btn btn-s" onclick="exportBalance()" style="margin-left:auto;">⬇ Excel</button>
+  </div>
+  <div class="g2">
+    <div class="rp"><div style="font-size:15px;font-weight:700;padding-bottom:11px;border-bottom:2px solid var(--bdr);margin-bottom:10px;">💳 Sources of Funds</div>
+      <div class="rst" style="margin-top:0;">Capital & Reserves</div>${rows(cap)}
+      <div class="rr" style="padding-left:12px;"><span>Add: Net ${nP>=0?'Profit':'Loss'}</span><span class="rrv ${nP>=0?'tg-':'tr-'}">${fmt(Math.abs(nP))}</span></div>
+      <div class="rtot rt-b"><span>Total Capital</span><span>${fmt(totCap+nP)}</span></div>
+      <div class="rst">Liabilities</div>${rows(liab)}
+      <div class="rtot rt-b"><span>Total Liabilities</span><span>${fmt(totLiab)}</span></div>
+      <div class="rg"><span>TOTAL SOURCES</span><span>${fmt(totSrc)}</span></div>
+    </div>
+    <div class="rp"><div style="font-size:15px;font-weight:700;padding-bottom:11px;border-bottom:2px solid var(--bdr);margin-bottom:10px;">🏗 Application of Funds</div>
+      ${['Fixed Assets','Cash & Bank','Sundry Debtors','Stock-in-Hand','Loans & Advances','Current Assets'].map(grp=>{
+        const it=assets.filter(a=>a.group===grp);
+        return it.length?`<div class="rst">${grp}</div>${rows(it,'closingDr')}`:'';
+      }).join('')}
+      <div class="rg"><span>TOTAL ASSETS</span><span>${fmt(totAssets)}</span></div>
+    </div>
+  </div>`;
+}
+function exportBalance(){
+  const L=computeLedger();
+  const aL=t=>state.accounts.filter(a=>a.type===t).map(a=>({...a,...L[a.id]}));
+  const cap=aL('Capital'),liab=aL('Liability'),assets=aL('Asset'),incR=aL('Income'),expR=aL('Expense');
+  const nP=incR.reduce((s,a)=>s+(a.closingCr||0),0)-expR.reduce((s,a)=>s+(a.closingDr||0),0);
+  const totCap=cap.reduce((s,a)=>s+(a.closingCr||0),0);
+  exportXLS([[state.company,''],['BALANCE SHEET',''],['FY:',state.fy],[],
+    ['SOURCES OF FUNDS',''],['Capital',''],[...cap.map(a=>['  '+a.name,a.closingCr||0])],['  Net Profit/(Loss)',nP],['Total Capital',totCap+nP],[],
+    ['Liabilities',''],[...liab.map(a=>['  '+a.name,a.closingCr||0])],[],
+    ['APPLICATION OF FUNDS',''],[...assets.map(a=>['  '+a.name,a.closingDr||0])]],'Balance Sheet',`Balance_Sheet_FY${state.fy}.xlsx`);
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  PAGE: GST
+// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════
+//  ADVANCE PAYMENTS
+// ══════════════════════════════════════════════════════════════════
+function pgAdvances(){
+  if(!state.advances)state.advances=[];
+  const custAdv=state.advances.filter(a=>a.type==='customer');
+  const vendAdv=state.advances.filter(a=>a.type==='vendor');
+  const custTotal=custAdv.reduce((s,a)=>s+(a.amount||0),0);
+  const vendTotal=vendAdv.reduce((s,a)=>s+(a.amount||0),0);
+  const custAdjusted=custAdv.reduce((s,a)=>s+(a.adjusted||0),0);
+  const vendAdjusted=vendAdv.reduce((s,a)=>s+(a.adjusted||0),0);
+  const custPending=custTotal-custAdjusted;
+  const vendPending=vendTotal-vendAdjusted;
+
+  const custRows=custAdv.map((a,i)=>`<tr class="${i%2?'alt':''}">
+    <td>${fmtD(a.date)}</td>
+    <td style="font-weight:600;">${dbN(a.partyId)||a.partyName||'—'}</td>
+    <td class="tr mono">${fmt(a.amount)}</td>
+    <td class="tr mono tg-">${fmt(a.adjusted||0)}</td>
+    <td class="tr mono ${(a.amount-(a.adjusted||0))>0?'tr-':'tg-'}">${fmt(a.amount-(a.adjusted||0))}</td>
+    <td class="tm-" style="font-size:11px;">${a.narration||'—'}</td>
+    <td><button class="btn btn-g btn-sm" onclick="openAdvForm('customer','${a.id}')">✏</button><button class="btn btn-d btn-sm" onclick="delAdv('${a.id}')">Del</button></td>
+  </tr>`).join('');
+
+  const vendRows=vendAdv.map((a,i)=>`<tr class="${i%2?'alt':''}">
+    <td>${fmtD(a.date)}</td>
+    <td style="font-weight:600;">${vN(a.partyId)||a.partyName||'—'}</td>
+    <td class="tr mono">${fmt(a.amount)}</td>
+    <td class="tr mono tg-">${fmt(a.adjusted||0)}</td>
+    <td class="tr mono ${(a.amount-(a.adjusted||0))>0?'tr-':'tg-'}">${fmt(a.amount-(a.adjusted||0))}</td>
+    <td class="tm-" style="font-size:11px;">${a.narration||'—'}</td>
+    <td><button class="btn btn-g btn-sm" onclick="openAdvForm('vendor','${a.id}')">✏</button><button class="btn btn-d btn-sm" onclick="delAdv('${a.id}')">Del</button></td>
+  </tr>`).join('');
+
+  eid('content').innerHTML=`
+  <div class="sg" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px;">
+    <div class="sc sc-b"><div class="sl">Customer Advances Received</div><div class="sv">${fmt(custTotal)}</div></div>
+    <div class="sc sc-o"><div class="sl">Customer Advances Pending</div><div class="sv">${fmt(custPending)}</div></div>
+    <div class="sc sc-g"><div class="sl">Vendor Advances Paid</div><div class="sv">${fmt(vendTotal)}</div></div>
+    <div class="sc sc-r"><div class="sl">Vendor Advances Pending</div><div class="sv">${fmt(vendPending)}</div></div>
+  </div>
+
+  <div style="display:flex;gap:10px;margin-bottom:14px;">
+    <button class="btn btn-p" onclick="openAdvForm('customer')">+ Customer Advance</button>
+    <button class="btn btn-s" onclick="openAdvForm('vendor')">+ Vendor Advance</button>
+  </div>
+
+  <div class="g2" style="gap:14px;">
+    <div>
+      <div style="font-weight:700;color:var(--tm);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:7px;">📥 Customer Advances Received</div>
+      <div class="card"><table class="tbl">
+        <thead><tr><th>Date</th><th>Customer</th><th class="tr">Amount</th><th class="tr">Adjusted</th><th class="tr">Pending</th><th>Narration</th><th class="no-print">Act</th></tr></thead>
+        <tbody>${custRows||'<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--tm);">No customer advances</td></tr>'}</tbody>
+        ${custTotal>0?`<tfoot><tr class="tf"><td colspan="2">TOTAL</td><td class="tr">${fmt(custTotal)}</td><td class="tr">${fmt(custAdjusted)}</td><td class="tr">${fmt(custPending)}</td><td colspan="2"></td></tr></tfoot>`:''}
+      </table></div>
+    </div>
+    <div>
+      <div style="font-weight:700;color:var(--tm);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:7px;">📤 Vendor Advances Paid</div>
+      <div class="card"><table class="tbl">
+        <thead><tr><th>Date</th><th>Vendor</th><th class="tr">Amount</th><th class="tr">Adjusted</th><th class="tr">Pending</th><th>Narration</th><th class="no-print">Act</th></tr></thead>
+        <tbody>${vendRows||'<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--tm);">No vendor advances</td></tr>'}</tbody>
+        ${vendTotal>0?`<tfoot><tr class="tf"><td colspan="2">TOTAL</td><td class="tr">${fmt(vendTotal)}</td><td class="tr">${fmt(vendAdjusted)}</td><td class="tr">${fmt(vendPending)}</td><td colspan="2"></td></tr></tfoot>`:''}
+      </table></div>
+    </div>
+  </div>
+  <div class="al al-i" style="margin-top:12px;font-size:12px;">
+    ℹ Advance accounting: Customer advance → Debit Cash/Bank, Credit 'Advance from Customers'. Vendor advance → Debit 'Advance to Suppliers', Credit Cash/Bank.
+    When adjusted against invoice → Debit 'Advance from Customers', Credit Accounts Receivable (Customer) or Debit Accounts Payable, Credit 'Advance to Suppliers' (Vendor).
+  </div>`;
+}
+
+function openAdvForm(type,editId){
+  const list=state.advances||[];const a=editId?list.find(x=>x.id===editId):null;
+  const partyList=type==='customer'?state.debtors:state.vendors;
+  const partyOpts=partyList.map(p=>`<option value="${p.id}" ${a?.partyId===p.id?'selected':''}>${p.name}</option>`).join('');
+  openModal(editId?`Edit Advance`:`New ${type==='customer'?'Customer':'Vendor'} Advance`,`
+  <div class="fg" style="margin-bottom:14px;">
+    <div class="fgr"><label class="fl">${type==='customer'?'Customer':'Vendor'} *</label><select class="fc" id="adv-party"><option value="">— Select —</option>${partyOpts}</select></div>
+    <div class="fgr"><label class="fl">Date *</label><input type="date" class="fc" id="adv-date" value="${a?.date||today()}"></div>
+    <div class="fgr"><label class="fl">Amount (₹) *</label><input type="number" class="fc" id="adv-amt" value="${a?.amount||''}" min="0" placeholder="0"></div>
+    <div class="fgr"><label class="fl">Adjusted Amount</label><input type="number" class="fc" id="adv-adj" value="${a?.adjusted||0}" min="0" placeholder="0"></div>
+    <div class="fgr" style="grid-column:span 4;"><label class="fl">Narration</label><input class="fc" id="adv-nar" value="${a?.narration||''}" placeholder="${type==='customer'?'Advance received from customer':'Advance paid to vendor'}"></div>
+  </div>
+  <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;">
+    <strong>📒 Journal Entry:</strong><br>
+    ${type==='customer'
+      ?'Dr: Cash/Bank &nbsp;&nbsp; Cr: Advance from Customers (Liability)'
+      :'Dr: Advance to Suppliers (Asset) &nbsp;&nbsp; Cr: Cash/Bank'}
+  </div>
+  <div style="display:flex;gap:8px;"><button class="btn btn-p" onclick="saveAdv('${type}','${editId||''}')">💾 Save Advance</button><button class="btn btn-g" onclick="closeModal()">Cancel</button></div>`);
+}
+
+function saveAdv(type,editId){
+  if(!state.advances)state.advances=[];
+  const partyId=eid('adv-party').value,dt=eid('adv-date').value;
+  const amount=parseFloat(eid('adv-amt').value)||0;
+  if(!partyId||!amount)return alert('Party and amount required');
+  const obj={id:editId||('ADV'+Date.now()),type,partyId,date:dt,amount,adjusted:parseFloat(eid('adv-adj').value)||0,narration:eid('adv-nar').value.trim()};
+  if(editId)state.advances=state.advances.map(x=>x.id===editId?obj:x);else state.advances.push(obj);
+  scheduleSave();closeModal();pgAdvances();
+}
+function delAdv(id){if(!confirm('Delete advance?'))return;state.advances=(state.advances||[]).filter(x=>x.id!==id);scheduleSave();pgAdvances();}
+
+// ══════════════════════════════════════════════════════════════════
+//  BANK RECONCILIATION
+// ══════════════════════════════════════════════════════════════════
+function pgBankRecon(){
+  if(!state.bankStatements)state.bankStatements=[];
+  const bankAccs=state.accounts.filter(a=>a.group==='Cash & Bank');
+  const selAcc=bankAccs[0]?.id||'';
+  renderBankRecon(selAcc);
+}
+
+function renderBankRecon(selAccId){
+  if(!state.bankStatements)state.bankStatements=[];
+  const bankAccs=state.accounts.filter(a=>a.group==='Cash & Bank');
+  const L=computeLedger();
+  const bookBal=selAccId?(L[selAccId]?.closingDr||0):0;
+  const stmts=state.bankStatements.filter(s=>s.bankAccId===selAccId);
+  const bankBal=stmts.length?stmts[stmts.length-1]?.balance||0:0;
+  const unmatched=stmts.filter(s=>!s.matched);
+  const matched=stmts.filter(s=>s.matched);
+
+  const stmtRows=stmts.map((s,i)=>`<tr class="${i%2?'alt':''}">
+    <td>${fmtD(s.date)}</td>
+    <td class="tm-" style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.description}</td>
+    <td class="tr tg-">${s.debit>0?fmt(s.debit):'—'}</td>
+    <td class="tr tr-">${s.credit>0?fmt(s.credit):'—'}</td>
+    <td class="tr mono">${fmt(s.balance)}</td>
+    <td>${s.matched?`<span class="badge bg-">✓ Matched</span>`:`<span class="badge br">Unmatched</span>`}</td>
+    <td style="white-space:nowrap;">
+      ${!s.matched?`<button class="btn btn-s btn-sm" onclick="matchStmt('${s.id}')">✓ Match</button>`:''}
+      <button class="btn btn-d btn-sm" onclick="delStmt('${s.id}','${selAccId}')">Del</button>
+    </td>
+  </tr>`).join('');
+
+  eid('content').innerHTML=`
+  <div class="tb no-print">
+    <select class="fc" style="min-width:220px;" onchange="renderBankRecon(this.value)">
+      ${bankAccs.map(a=>`<option value="${a.id}" ${a.id===selAccId?'selected':''}>${a.name}</option>`).join('')}
+    </select>
+    <button class="btn btn-p" onclick="openAddStmtForm('${selAccId}')">+ Add Statement Entry</button>
+    <button class="btn btn-g" onclick="importStmtCSV('${selAccId}')">📂 Import CSV</button>
+    <button class="btn btn-s" onclick="autoMatch('${selAccId}')" style="margin-left:auto;">⚡ Auto-Match</button>
+  </div>
+
+  <div class="sg" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px;">
+    <div class="sc sc-b"><div class="sl">Book Balance</div><div class="sv">${fmt(bookBal)}</div><div class="ss">As per ledger</div></div>
+    <div class="sc sc-g"><div class="sl">Bank Balance</div><div class="sv">${fmt(bankBal)}</div><div class="ss">As per statement</div></div>
+    <div class="sc ${unmatched.length>0?'sc-r':'sc-o'}"><div class="sl">Unmatched Entries</div><div class="sv">${unmatched.length}</div></div>
+    <div class="sc sc-p"><div class="sl">Matched Entries</div><div class="sv">${matched.length}</div></div>
+  </div>
+
+  ${Math.abs(bookBal-bankBal)>1?`<div class="al al-w">⚠ Difference of ${fmt(Math.abs(bookBal-bankBal))} between book and bank balance. Check unmatched entries.</div>`:`<div class="al al-s">✅ Book Balance matches Bank Balance — Reconciliation Complete!</div>`}
+
+  <div class="card">
+    <div class="ch">Bank Statement — ${bankAccs.find(a=>a.id===selAccId)?.name||'—'}</div>
+    <table class="tbl">
+      <thead><tr><th>Date</th><th>Description</th><th class="tr">Debit (Dr)</th><th class="tr">Credit (Cr)</th><th class="tr">Balance</th><th>Status</th><th class="no-print">Actions</th></tr></thead>
+      <tbody>${stmtRows||'<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--tm);">No statement entries. Add entries or import CSV.</td></tr>'}</tbody>
+    </table>
+  </div>
+  <div style="margin-top:10px;font-size:11px;color:var(--tm);">
+    💡 Tip: Import your bank statement CSV (Date, Description, Debit, Credit, Balance) and click Auto-Match to automatically reconcile with book entries.
+  </div>`;
+}
+
+function openAddStmtForm(bankAccId){
+  openModal('Add Bank Statement Entry',`
+  <div class="fg" style="margin-bottom:14px;">
+    <div class="fgr"><label class="fl">Date *</label><input type="date" class="fc" id="bs-date" value="${today()}"></div>
+    <div class="fgr" style="grid-column:span 3;"><label class="fl">Description *</label><input class="fc" id="bs-desc" placeholder="Transaction description from bank"></div>
+    <div class="fgr"><label class="fl">Debit (Money In) ₹</label><input type="number" class="fc" id="bs-dr" value="0" min="0"></div>
+    <div class="fgr"><label class="fl">Credit (Money Out) ₹</label><input type="number" class="fc" id="bs-cr" value="0" min="0"></div>
+    <div class="fgr"><label class="fl">Running Balance ₹</label><input type="number" class="fc" id="bs-bal" value="0"></div>
+  </div>
+  <div style="display:flex;gap:8px;"><button class="btn btn-p" onclick="saveStmt('${bankAccId}')">💾 Add Entry</button><button class="btn btn-g" onclick="closeModal()">Cancel</button></div>`);
+}
+
+function saveStmt(bankAccId){
+  if(!state.bankStatements)state.bankStatements=[];
+  const desc=eid('bs-desc').value.trim(),dt=eid('bs-date').value;
+  if(!desc||!dt)return alert('Date and description required');
+  const obj={id:'BS'+Date.now(),bankAccId,date:dt,description:desc,debit:parseFloat(eid('bs-dr').value)||0,credit:parseFloat(eid('bs-cr').value)||0,balance:parseFloat(eid('bs-bal').value)||0,matched:false};
+  state.bankStatements.push(obj);scheduleSave();closeModal();renderBankRecon(bankAccId);
+}
+
+function delStmt(id,accId){if(!confirm('Delete?'))return;state.bankStatements=(state.bankStatements||[]).filter(x=>x.id!==id);scheduleSave();renderBankRecon(accId);}
+
+function matchStmt(id){
+  if(!state.bankStatements)return;
+  const s=state.bankStatements.find(x=>x.id===id);if(s)s.matched=true;
+  scheduleSave();const acc=eid('content').querySelector('select')?.value||'';renderBankRecon(acc);
+}
+
+function autoMatch(bankAccId){
+  if(!state.bankStatements)return;
+  const L=computeLedger();const acc=L[bankAccId];if(!acc)return;
+  let matchCount=0;
+  state.bankStatements.filter(s=>s.bankAccId===bankAccId&&!s.matched).forEach(stmt=>{
+    const match=acc.txns.find(t=>{
+      const amtMatch=(stmt.debit>0&&Math.abs(t.dr-stmt.debit)<1)||(stmt.credit>0&&Math.abs(t.cr-stmt.credit)<1);
+      return amtMatch&&t.date===stmt.date;
+    });
+    if(match){stmt.matched=true;matchCount++;}
+  });
+  scheduleSave();
+  showToast(`⚡ Auto-matched ${matchCount} entries!`,'#059669');
+  renderBankRecon(bankAccId);
+}
+
+function importStmtCSV(bankAccId){
+  openModal('Import Bank Statement CSV',`
+  <div class="al al-i" style="margin-bottom:12px;font-size:12px;">
+    CSV format: <strong>Date, Description, Debit, Credit, Balance</strong><br>
+    Date format: DD/MM/YYYY or YYYY-MM-DD. Debit = money received, Credit = money paid.
+  </div>
+  <input type="file" id="csv-file" accept=".csv" style="margin-bottom:12px;display:block;">
+  <div style="display:flex;gap:8px;"><button class="btn btn-p" onclick="parseCSV('${bankAccId}')">📂 Import</button><button class="btn btn-g" onclick="closeModal()">Cancel</button></div>`);
+}
+
+function parseCSV(bankAccId){
+  const file=eid('csv-file')?.files[0];if(!file)return alert('Select a CSV file');
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const lines=e.target.result.split('\n').filter(l=>l.trim()&&!l.startsWith('Date'));
+    let count=0;
+    lines.forEach(line=>{
+      const cols=line.split(',').map(c=>c.trim().replace(/"/g,''));
+      if(cols.length<4)return;
+      let dt=cols[0];
+      // Normalize date
+      if(dt.includes('/'))dt=dt.split('/').reverse().join('-');
+      const desc=cols[1]||'—';const dr=parseFloat(cols[2])||0;const cr=parseFloat(cols[3])||0;const bal=parseFloat(cols[4])||0;
+      if(!state.bankStatements)state.bankStatements=[];
+      state.bankStatements.push({id:'CSV'+Date.now()+count,bankAccId,date:dt,description:desc,debit:dr,credit:cr,balance:bal,matched:false});
+      count++;
+    });
+    scheduleSave();closeModal();showToast(`📂 Imported ${count} statement entries`,'#059669');renderBankRecon(bankAccId);
+  };
+  reader.readAsText(file);
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  CASH FLOW STATEMENT — AS-3 (Direct Method)
+// ══════════════════════════════════════════════════════════════════
+function pgCashFlow(){
+  const L=computeLedger();
+  // Operating Activities
+  const netProfit=Object.values(L).filter(a=>a.type==='Income').reduce((s,a)=>s+a.closingCr,0)
+    -Object.values(L).filter(a=>a.type==='Expense').reduce((s,a)=>s+a.closingDr,0);
+  const receiptsFromCustomers=state.vouchers.filter(v=>v.type==='Receipt').reduce((s,v)=>s+v.entries.reduce((x,e)=>x+(e.dr||0),0),0);
+  const paymentsToSuppliers=state.vouchers.filter(v=>v.type==='Payment').reduce((s,v)=>s+v.entries.reduce((x,e)=>x+(e.cr||0),0),0);
+  const salaries=L['4002']?.closingDr||0;
+  const rent=L['4003']?.closingDr||0;
+  const taxes=(L['2002']?.closingCr||0)+(L['2003']?.closingCr||0)-(L['1007']?.closingDr||0)-(L['1008']?.closingDr||0);
+  const operatingCF=receiptsFromCustomers-paymentsToSuppliers-salaries-rent-taxes;
+
+  // Investing Activities
+  const fixedAssets=Object.values(L).filter(a=>a.group==='Fixed Assets').reduce((s,a)=>s-(a.closingDr-a.balance),0);
+  const investingCF=fixedAssets;
+
+  // Financing Activities
+  const capitalReceipts=state.vouchers.filter(v=>v.type==='Receipt'&&v.narration.toLowerCase().includes('capital')).reduce((s,v)=>s+v.entries.reduce((x,e)=>x+(e.dr||0),0),0);
+  const loanReceipts=(L['2006']?.closingCr||0)-(L['2006']?.balance||0);
+  const financingCF=capitalReceipts+loanReceipts;
+
+  const netCF=operatingCF+investingCF+financingCF;
+  const openingCash=Object.values(L).filter(a=>a.group==='Cash & Bank').reduce((s,a)=>s+a.balance,0);
+  const closingCash=openingCash+netCF;
+
+  eid('content').innerHTML=`
+  <div class="tb no-print">
+    <div style="font-weight:700;font-size:14px;">Cash Flow Statement — FY ${state.fy} (AS-3 Direct Method)</div>
+    <button class="btn btn-s" onclick="exportCashFlow()" style="margin-left:auto;">⬇ Excel</button>
+  </div>
+  <div class="sg" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px;">
+    <div class="sc sc-b"><div class="sl">Operating CF</div><div class="sv">${fmt(Math.abs(operatingCF))}</div><div class="ss">${operatingCF>=0?'Inflow':'Outflow'}</div></div>
+    <div class="sc sc-p"><div class="sl">Investing CF</div><div class="sv">${fmt(Math.abs(investingCF))}</div><div class="ss">${investingCF>=0?'Inflow':'Outflow'}</div></div>
+    <div class="sc sc-o"><div class="sl">Financing CF</div><div class="sv">${fmt(Math.abs(financingCF))}</div><div class="ss">${financingCF>=0?'Inflow':'Outflow'}</div></div>
+    <div class="sc ${netCF>=0?'sc-g':'sc-r'}"><div class="sl">Net Cash Flow</div><div class="sv">${fmt(Math.abs(netCF))}</div><div class="ss">${netCF>=0?'Net Inflow':'Net Outflow'}</div></div>
+  </div>
+  <div class="g3">
+    <div class="rp">
+      <div style="font-size:14px;font-weight:700;padding-bottom:10px;border-bottom:2px solid var(--bdr);margin-bottom:10px;">🔧 A. Operating Activities</div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--tl);margin-bottom:6px;">Cash Inflows</div>
+      <div class="rr"><span class="rrl">Receipts from Customers</span><span class="rrv tg-">${fmt(receiptsFromCustomers)}</span></div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--tl);margin:8px 0 6px;">Cash Outflows</div>
+      <div class="rr"><span class="rrl">Payments to Suppliers</span><span class="rrv tr-">(${fmt(paymentsToSuppliers)})</span></div>
+      <div class="rr"><span class="rrl">Salaries & Wages</span><span class="rrv tr-">(${fmt(salaries)})</span></div>
+      <div class="rr"><span class="rrl">Rent Expenses</span><span class="rrv tr-">(${fmt(rent)})</span></div>
+      <div class="rr"><span class="rrl">GST & Taxes</span><span class="rrv tr-">(${fmt(Math.max(taxes,0))})</span></div>
+      <div class="rtot ${operatingCF>=0?'rt-g':'rt-r'}" style="margin-top:10px;"><span>Net Operating CF</span><span>${operatingCF>=0?'+':'-'}${fmt(Math.abs(operatingCF))}</span></div>
+    </div>
+    <div class="rp">
+      <div style="font-size:14px;font-weight:700;padding-bottom:10px;border-bottom:2px solid var(--bdr);margin-bottom:10px;">🏗 B. Investing Activities</div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--tl);margin-bottom:6px;">Capital Expenditure</div>
+      <div class="rr"><span class="rrl">Purchase of Fixed Assets</span><span class="rrv tr-">(${fmt(Math.abs(fixedAssets))})</span></div>
+      <div class="rr"><span class="rrl">Sale of Fixed Assets</span><span class="rrv tg-">${fmt(0)}</span></div>
+      <div class="rr"><span class="rrl">Interest / Dividend Received</span><span class="rrv tg-">${fmt(L['3003']?.closingCr||0)}</span></div>
+      <div class="rtot ${investingCF>=0?'rt-g':'rt-r'}" style="margin-top:10px;"><span>Net Investing CF</span><span>${investingCF>=0?'+':'-'}${fmt(Math.abs(investingCF))}</span></div>
+    </div>
+    <div class="rp">
+      <div style="font-size:14px;font-weight:700;padding-bottom:10px;border-bottom:2px solid var(--bdr);margin-bottom:10px;">💰 C. Financing Activities</div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--tl);margin-bottom:6px;">Capital & Loans</div>
+      <div class="rr"><span class="rrl">Capital Contributions</span><span class="rrv tg-">${fmt(capitalReceipts)}</span></div>
+      <div class="rr"><span class="rrl">Loan Proceeds</span><span class="rrv tg-">${fmt(Math.max(loanReceipts,0))}</span></div>
+      <div class="rr"><span class="rrl">Loan Repayments</span><span class="rrv tr-">(${fmt(0)})</span></div>
+      <div class="rtot ${financingCF>=0?'rt-g':'rt-r'}" style="margin-top:10px;"><span>Net Financing CF</span><span>${financingCF>=0?'+':'-'}${fmt(Math.abs(financingCF))}</span></div>
+    </div>
+  </div>
+  <div class="rp" style="margin-top:14px;background:linear-gradient(135deg,#0f172a,#1e3a6e);color:#fff;">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;">
+      <div><div style="font-size:10px;opacity:.7;text-transform:uppercase;letter-spacing:1px;">Opening Cash & Bank Balance</div><div style="font-size:18px;font-weight:700;margin-top:4px;font-family:monospace;">${fmt(openingCash)}</div></div>
+      <div style="text-align:center;"><div style="font-size:10px;opacity:.7;text-transform:uppercase;letter-spacing:1px;">Net Change in Cash</div><div style="font-size:18px;font-weight:700;margin-top:4px;font-family:monospace;color:${netCF>=0?'#34d399':'#f87171'};">${netCF>=0?'+':''}${fmt(netCF)}</div></div>
+      <div style="text-align:right;"><div style="font-size:10px;opacity:.7;text-transform:uppercase;letter-spacing:1px;">Closing Cash & Bank Balance</div><div style="font-size:18px;font-weight:700;margin-top:4px;font-family:monospace;color:#93c5fd;">${fmt(closingCash)}</div></div>
+    </div>
+  </div>
+  <div class="al al-i" style="margin-top:10px;font-size:11px;">ℹ AS-3 Cash Flow Statement prepared using Direct Method. Figures derived from voucher entries and ledger balances.</div>`;
+}
+
+function exportCashFlow(){
+  const L=computeLedger();
+  const receiptsFromCustomers=state.vouchers.filter(v=>v.type==='Receipt').reduce((s,v)=>s+v.entries.reduce((x,e)=>x+(e.dr||0),0),0);
+  const paymentsToSuppliers=state.vouchers.filter(v=>v.type==='Payment').reduce((s,v)=>s+v.entries.reduce((x,e)=>x+(e.cr||0),0),0);
+  exportXLS([[state.company,''],['CASH FLOW STATEMENT (AS-3)',''],['Financial Year:',state.fy],[],
+    ['A. OPERATING ACTIVITIES',''],['Receipts from Customers',receiptsFromCustomers],['Payments to Suppliers',-paymentsToSuppliers],[],
+    ['B. INVESTING ACTIVITIES',''],['Purchase of Fixed Assets',0],[],
+    ['C. FINANCING ACTIVITIES',''],['Capital Contributions',0]],'Cash Flow',`Cash_Flow_FY${state.fy}.xlsx`);
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  TDS REPORTS
+// ══════════════════════════════════════════════════════════════════
+function pgTDS(){
+  const tdsVouchers=state.vouchers.filter(v=>v.tdsSection);
+  const bySection={};
+  tdsVouchers.forEach(v=>{
+    if(!bySection[v.tdsSection])bySection[v.tdsSection]={code:v.tdsSection,vouchers:[],total:0,tdsAmt:0};
+    const amt=v.entries.reduce((s,e)=>s+(e.dr||0),0);
+    const sec=TDS_SECTIONS.find(s=>s.code===v.tdsSection);
+    const tdsAmt=sec?Math.round(amt*sec.rate)/100:0;
+    bySection[v.tdsSection].vouchers.push(v);
+    bySection[v.tdsSection].total+=amt;
+    bySection[v.tdsSection].tdsAmt+=tdsAmt;
+  });
+
+  const summaryRows=Object.values(bySection).map((s,i)=>{
+    const sec=TDS_SECTIONS.find(x=>x.code===s.code);
+    return`<tr class="${i%2?'alt':''}"><td class="mono tb-">${s.code}</td><td>${sec?.desc||'—'}</td><td class="tc"><span class="badge by">${sec?.rate||0}%</span></td><td class="tc">${s.vouchers.length}</td><td class="tr mono">${fmt(s.total)}</td><td class="tr mono tr-">${fmt(s.tdsAmt)}</td></tr>`;
+  }).join('');
+
+  const detailRows=tdsVouchers.map((v,i)=>{
+    const sec=TDS_SECTIONS.find(s=>s.code===v.tdsSection);
+    const amt=v.entries.reduce((s,e)=>s+(e.dr||0),0);
+    const tdsAmt=sec?Math.round(amt*sec.rate)/100:0;
+    return`<tr class="${i%2?'alt':''}"><td>${fmtD(v.date)}</td><td class="mono tb-">${v.id}</td><td><span class="badge ${bcol(v.type)}">${v.type}</span></td><td class="tm-">${v.narration}</td><td class="mono">${v.tdsSection}</td><td class="tr">${fmt(amt)}</td><td class="tr tr-">${fmt(tdsAmt)}</td></tr>`;
+  }).join('');
+
+  const totalTDS=Object.values(bySection).reduce((s,x)=>s+x.tdsAmt,0);
+
+  eid('content').innerHTML=`
+  <div class="tb no-print">
+    <div style="font-weight:700;font-size:14px;">TDS Report — FY ${state.fy}</div>
+    <button class="btn btn-s" onclick="exportTDS()" style="margin-left:auto;">⬇ Export Form 26Q</button>
+  </div>
+  <div class="sg" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px;">
+    <div class="sc sc-b"><div class="sl">Transactions with TDS</div><div class="sv">${tdsVouchers.length}</div></div>
+    <div class="sc sc-r"><div class="sl">Total TDS Deducted</div><div class="sv">${fmt(totalTDS)}</div></div>
+    <div class="sc sc-o"><div class="sl">TDS Sections Used</div><div class="sv">${Object.keys(bySection).length}</div></div>
+  </div>
+  <div style="font-weight:700;color:var(--tm);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Section-wise Summary</div>
+  <div class="card" style="margin-bottom:14px;"><table class="tbl">
+    <thead><tr><th>Section</th><th>Nature</th><th class="tc">Rate</th><th class="tc">Transactions</th><th class="tr">Taxable Amount</th><th class="tr">TDS Amount</th></tr></thead>
+    <tbody>${summaryRows||'<tr><td colspan="6" style="padding:16px;text-align:center;color:var(--tm);">No TDS transactions. Select TDS section when creating Payment/Purchase vouchers.</td></tr>'}</tbody>
+    ${totalTDS>0?`<tfoot><tr class="tf"><td colspan="4">TOTAL TDS DEDUCTED</td><td class="tr"></td><td class="tr">${fmt(totalTDS)}</td></tr></tfoot>`:''}
+  </table></div>
+  <div style="font-weight:700;color:var(--tm);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Transaction Details</div>
+  <div class="card"><table class="tbl">
+    <thead><tr><th>Date</th><th>Voucher</th><th>Type</th><th>Narration</th><th>Section</th><th class="tr">Amount</th><th class="tr">TDS</th></tr></thead>
+    <tbody>${detailRows||'<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--tm);">No TDS vouchers found</td></tr>'}</tbody>
+  </table></div>`;
+}
+
+function exportTDS(){
+  const tdsVouchers=state.vouchers.filter(v=>v.tdsSection);
+  exportXLS([[state.company,'','','','',''],['TDS REPORT — FORM 26Q','','','','',''],['Financial Year:',state.fy,'','','',''],['TAN:','—','','','',''],
+    ['Date','Voucher No.','Type','Narration','TDS Section','Taxable Amount','TDS Rate','TDS Amount'],
+    ...tdsVouchers.map(v=>{const sec=TDS_SECTIONS.find(s=>s.code===v.tdsSection);const amt=v.entries.reduce((s,e)=>s+(e.dr||0),0);const tdsAmt=sec?Math.round(amt*sec.rate)/100:0;return[v.date,v.id,v.type,v.narration,v.tdsSection,amt,(sec?.rate||0)+'%',tdsAmt];})],'TDS Report',`TDS_Report_FY${state.fy}.xlsx`);
+}
+
+function pgGST(){renderGST('all');}
+function renderGST(filter){
+  const sV=state.vouchers.filter(v=>v.type==='Sales');
+  const pV=state.vouchers.filter(v=>v.type==='Purchase');
+
+  // Use stored GST breakdowns from items if available, otherwise estimate
+  const calcVoucherGST=(vouchers)=>{
+    let taxable=0,cgst=0,sgst=0,igst=0;
+    vouchers.forEach(v=>{
+      if(v.items&&v.items.length>0){
+        v.items.forEach(it=>{taxable+=it.taxable||0;cgst+=it.cgst||0;sgst+=it.sgst||0;igst+=it.igst||0;});
+      } else {
+        // Estimate from GST accounts in entries
+        const debtors=state.accounts.filter(a=>a.group==='Sundry Debtors').map(a=>a.id);
+        const cred=state.accounts.filter(a=>a.group==='Sundry Creditors').map(a=>a.id);
+        const cgstAmt=v.entries.filter(e=>e.accId==='2002').reduce((s,e)=>s+(e.cr||0),0);
+        const sgstAmt=v.entries.filter(e=>e.accId==='2003').reduce((s,e)=>s+(e.cr||0),0);
+        const igstAmt=v.entries.filter(e=>e.accId==='2004').reduce((s,e)=>s+(e.cr||0),0);
+        const gross=v.entries.reduce((s,e)=>s+(e.dr||0),0);
+        taxable+=gross-cgstAmt-sgstAmt-igstAmt;cgst+=cgstAmt;sgst+=sgstAmt;igst+=igstAmt;
+      }
+    });
+    return{taxable:Math.round(taxable*100)/100,cgst:Math.round(cgst*100)/100,sgst:Math.round(sgst*100)/100,igst:Math.round(igst*100)/100};
+  };
+
+  const salesGST=calcVoucherGST(sV);
+  const purchGST=calcVoucherGST(pV);
+  const inputCredit=purchGST.cgst+purchGST.sgst+purchGST.igst;
+  const outputTax=salesGST.cgst+salesGST.sgst+salesGST.igst;
+  const netGST=outputTax-inputCredit;
+
+  const sRows=sV.map((v,i)=>{
+    const g=calcVoucherGST([v]);
+    return`<tr class="${i%2?'alt':''}"><td>${fmtD(v.date)}</td><td class="mono tb-">${v.id}</td><td class="tm-" style="font-size:11px;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${v.narration}</td><td class="tr">${fmt(g.taxable)}</td><td class="tr tg-">${fmt(g.cgst)}</td><td class="tr tg-">${fmt(g.sgst)}</td><td class="tr bp">${fmt(g.igst)}</td><td class="tr" style="font-weight:700;">${fmt(g.taxable+g.cgst+g.sgst+g.igst)}</td></tr>`;
+  }).join('');
+
+  const pRows=pV.map((v,i)=>{
+    const g=calcVoucherGST([v]);
+    return`<tr class="${i%2?'alt':''}"><td>${fmtD(v.date)}</td><td class="mono tb-">${v.id}</td><td class="tm-" style="font-size:11px;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${v.narration}</td><td class="tr">${fmt(g.taxable)}</td><td class="tr tg-">${fmt(g.cgst)}</td><td class="tr tg-">${fmt(g.sgst)}</td><td class="tr bp">${fmt(g.igst)}</td><td class="tr" style="font-weight:700;">${fmt(g.taxable+g.cgst+g.sgst+g.igst)}</td></tr>`;
+  }).join('');
+
+  eid('content').innerHTML=`
+  <div class="tb no-print">
+    <div style="font-weight:700;font-size:14px;">GST Reports — FY ${state.fy}${state.gstin?' | GSTIN: '+state.gstin:''}</div>
+    <button class="btn btn-s" onclick="exportGSTReport()" style="margin-left:auto;">⬇ Export GSTR Excel</button>
+  </div>
+  <div class="sg" style="grid-template-columns:repeat(5,1fr);margin-bottom:14px;">
+    <div class="sc sc-b"><div class="sl">Taxable Sales</div><div class="sv">${fmt(salesGST.taxable)}</div></div>
+    <div class="sc sc-g"><div class="sl">Output GST (CGST+SGST+IGST)</div><div class="sv">${fmt(outputTax)}</div></div>
+    <div class="sc sc-p"><div class="sl">Input Tax Credit</div><div class="sv">${fmt(inputCredit)}</div></div>
+    <div class="sc ${netGST>=0?'sc-r':'sc-g'}"><div class="sl">Net GST ${netGST>=0?'Payable':'Refund'}</div><div class="sv">${fmt(Math.abs(netGST))}</div></div>
+    <div class="sc sc-o"><div class="sl">Taxable Purchases</div><div class="sv">${fmt(purchGST.taxable)}</div></div>
+  </div>
+
+  <div style="background:#f0fdf4;border:1px solid #a7f3d0;border-radius:12px;padding:14px;margin-bottom:14px;">
+    <div style="font-size:12px;font-weight:700;color:#065f46;margin-bottom:10px;">GSTR-3B Summary</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;font-size:12px;">
+      <div><div style="color:var(--tm);font-size:10px;margin-bottom:4px;">Output Tax (Sales)</div>
+        <div>CGST: <strong>${fmt(salesGST.cgst)}</strong></div>
+        <div>SGST: <strong>${fmt(salesGST.sgst)}</strong></div>
+        <div>IGST: <strong>${fmt(salesGST.igst)}</strong></div>
+      </div>
+      <div><div style="color:var(--tm);font-size:10px;margin-bottom:4px;">Input Tax Credit (Purchases)</div>
+        <div>CGST: <strong>${fmt(purchGST.cgst)}</strong></div>
+        <div>SGST: <strong>${fmt(purchGST.sgst)}</strong></div>
+        <div>IGST: <strong>${fmt(purchGST.igst)}</strong></div>
+      </div>
+      <div><div style="color:var(--tm);font-size:10px;margin-bottom:4px;">Net GST Liability</div>
+        <div>CGST Net: <strong style="color:${(salesGST.cgst-purchGST.cgst)>0?'#dc2626':'#059669'}">${fmt(Math.abs(salesGST.cgst-purchGST.cgst))}</strong></div>
+        <div>SGST Net: <strong style="color:${(salesGST.sgst-purchGST.sgst)>0?'#dc2626':'#059669'}">${fmt(Math.abs(salesGST.sgst-purchGST.sgst))}</strong></div>
+        <div>IGST Net: <strong style="color:${(salesGST.igst-purchGST.igst)>0?'#dc2626':'#059669'}">${fmt(Math.abs(salesGST.igst-purchGST.igst))}</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="g2" style="gap:14px;">
+    <div>
+      <div style="font-weight:700;color:#1d4ed8;font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:7px;">GSTR-1: Sales Register (Output Tax)</div>
+      <div class="card"><table class="tbl">
+        <thead><tr><th>Date</th><th>Voucher</th><th>Narration</th><th class="tr">Taxable</th><th class="tr">CGST</th><th class="tr">SGST</th><th class="tr">IGST</th><th class="tr">Total</th></tr></thead>
+        <tbody>${sRows||'<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--tm)">No sales</td></tr>'}</tbody>
+      </table></div>
+    </div>
+    <div>
+      <div style="font-weight:700;color:#c2410c;font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:7px;">GSTR-2: Purchase Register (Input Tax Credit)</div>
+      <div class="card"><table class="tbl">
+        <thead><tr><th>Date</th><th>Voucher</th><th>Narration</th><th class="tr">Taxable</th><th class="tr">CGST</th><th class="tr">SGST</th><th class="tr">IGST</th><th class="tr">Total</th></tr></thead>
+        <tbody>${pRows||'<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--tm)">No purchases</td></tr>'}</tbody>
+      </table></div>
+    </div>
+  </div>`;
+}
+function exportGSTReport(){
+  const sV=state.vouchers.filter(v=>v.type==='Sales'),pV=state.vouchers.filter(v=>v.type==='Purchase');
+  exportXLS([[state.company,'','','','','',''],['GST REPORT — GSTR-3B','','','','','',''],['GSTIN:',state.gstin||'—','FY:',state.fy,'','',''],
+    ['GSTR-1: SALES REGISTER','','','','','',''],['Date','Voucher','Narration','Taxable','CGST','SGST','IGST'],
+    ...sV.flatMap(v=>{const g=v.items?.length?{taxable:v.items.reduce((s,i)=>s+(i.taxable||0),0),cgst:v.items.reduce((s,i)=>s+(i.cgst||0),0),sgst:v.items.reduce((s,i)=>s+(i.sgst||0),0),igst:v.items.reduce((s,i)=>s+(i.igst||0),0)}:{taxable:0,cgst:0,sgst:0,igst:0};return[[v.date,v.id,v.narration,g.taxable,g.cgst,g.sgst,g.igst]];}),
+    [],['GSTR-2: PURCHASE REGISTER','','','','','',''],['Date','Voucher','Narration','Taxable','CGST','SGST','IGST'],
+    ...pV.flatMap(v=>{const g=v.items?.length?{taxable:v.items.reduce((s,i)=>s+(i.taxable||0),0),cgst:v.items.reduce((s,i)=>s+(i.cgst||0),0),sgst:v.items.reduce((s,i)=>s+(i.sgst||0),0),igst:v.items.reduce((s,i)=>s+(i.igst||0),0)}:{taxable:0,cgst:0,sgst:0,igst:0};return[[v.date,v.id,v.narration,g.taxable,g.cgst,g.sgst,g.igst]];})],'GST Report',`GST_Report_FY${state.fy}.xlsx`);
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+//  PAGE: EXCEL IMPORT / EXPORT
+// ══════════════════════════════════════════════════════════════════
+function pgImport(){
+  eid('content').innerHTML=`
+  <div class="g2" style="gap:16px;">
+    <div>
+      <div style="font-weight:700;font-size:14px;margin-bottom:14px;">📥 Import Data</div>
+      <div class="card" style="padding:20px;margin-bottom:14px;">
+        <div style="font-weight:700;margin-bottom:8px;">Step 1: Download Excel Template</div>
+        <div style="font-size:12px;color:var(--tm);margin-bottom:12px;">Download the template, fill in your data across all sheets (Accounts, Vouchers, Vendors, Debtors), then upload it back.</div>
+        <button class="btn btn-p" onclick="downloadTemplate()">⬇ Download Excel Template</button>
+      </div>
+      <div class="card" style="padding:20px;margin-bottom:14px;">
+        <div style="font-weight:700;margin-bottom:8px;">Step 2: Upload Filled Excel → Convert to JSON</div>
+        <div style="font-size:12px;color:var(--tm);margin-bottom:12px;">Upload your filled Excel file. The app will read and convert it to JSON format for preview.</div>
+        <input type="file" id="xl-upload" accept=".xlsx,.xls" style="display:none;" onchange="parseExcelImport(this)">
+        <button class="btn btn-p" onclick="eid('xl-upload').click()">📂 Upload Excel File</button>
+      </div>
+      <div class="card" style="padding:20px;">
+        <div style="font-weight:700;margin-bottom:8px;">Import from JSON Backup</div>
+        <div style="font-size:12px;color:var(--tm);margin-bottom:12px;">Restore from a previously exported JSON backup file.</div>
+        <input type="file" id="json-upload" accept=".json" style="display:none;" onchange="importJSON(this)">
+        <button class="btn btn-g" onclick="eid('json-upload').click()">📂 Import JSON Backup</button>
+      </div>
+    </div>
+    <div>
+      <div style="font-weight:700;font-size:14px;margin-bottom:14px;">📤 Export Data</div>
+      <div class="card" style="padding:20px;">
+        <div class="fgr" style="margin-bottom:14px;">
+          <div style="font-weight:700;margin-bottom:8px;">Export Complete Data to Excel</div>
+          <div style="font-size:12px;color:var(--tm);margin-bottom:10px;">Export all data (Accounts, Vouchers, Vendors, Debtors, Trial Balance) into a multi-sheet Excel file.</div>
+          <button class="btn btn-s" onclick="exportAllExcel()">⬇ Export All Data (Excel)</button>
+        </div>
+        <hr style="border:none;border-top:1px solid var(--bdr);margin:14px 0;">
+        <div class="fgr" style="margin-bottom:14px;">
+          <div style="font-weight:700;margin-bottom:8px;">Export as JSON Backup</div>
+          <div style="font-size:12px;color:var(--tm);margin-bottom:10px;">Full backup of all your data as a .json file. Use this to restore later.</div>
+          <button class="btn btn-p" onclick="exportJSON()">💾 Download JSON Backup</button>
+        </div>
+        <hr style="border:none;border-top:1px solid var(--bdr);margin:14px 0;">
+        <div>
+          <div style="font-weight:700;margin-bottom:4px;font-size:12px;">Current Data Summary</div>
+          <div style="font-size:11px;color:var(--tm);line-height:1.8;">
+            📋 Accounts: <strong>${state.accounts.length}</strong><br>
+            📝 Vouchers: <strong>${state.vouchers.length}</strong><br>
+            🏭 Vendors: <strong>${state.vendors.length}</strong><br>
+            🤝 Debtors: <strong>${state.debtors.length}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="import-preview" style="margin-top:16px;"></div>`;
+}
+
+function downloadTemplate(){
+  const sheets=[
+    {name:'Accounts',data:[
+      ['AccounTally Pro — Import Template','','','','',''],
+      ['Instructions: Fill in data from row 4 onwards. Do not modify headers.','','','','',''],
+      [],
+      ['Account ID','Account Name','Group','Type (Asset/Liability/Income/Expense/Capital)','Opening Balance','Nature (Dr/Cr)'],
+      ['1001','Cash in Hand','Cash & Bank','Asset',0,'Dr'],
+      ['1002','Bank Account','Cash & Bank','Asset',0,'Dr'],
+      ['3001','Sales Revenue','Sales Accounts','Income',0,'Cr'],
+      ['4001','Purchases','Purchase Accounts','Expense',0,'Dr'],
+      ['5001',"Owner's Capital",'Capital Account','Capital',0,'Cr'],
+    ]},
+    {name:'Vouchers',data:[
+      ['AccounTally Pro — Vouchers Import','','','','','','',''],
+      ['Instructions: One row per entry line. Voucher ID groups entries together.','','','','','','',''],
+      [],
+      ['Voucher ID','Date (YYYY-MM-DD)','Type','Account ID','Debit Amount','Credit Amount','Narration','Reference No','Due Date (YYYY-MM-DD)'],
+      ['[Voucher-ID]','[YYYY-MM-DD]','Receipt','[Account-ID]','[Debit]','[Credit]','[Narration]','[Ref]','[DueDate]'],
+    ]},
+    {name:'Vendors',data:[
+      ['AccounTally Pro — Vendor Master','','','','','','','','','','','',''],
+      ['Instructions: One vendor per row','','','','','','','','','','','',''],
+      [],
+      ['Name','Address','City','State','Pincode','Contact','Email','GST Registered (Yes/No)','GSTN','Bank Name','Account No','IFSC','Branch','Credit Days'],
+    ]},
+    {name:'Debtors',data:[
+      ['AccounTally Pro — Debtor Master','','','','','','','','','','','',''],
+      ['Instructions: One customer per row','','','','','','','','','','','',''],
+      [],
+      ['Name','Address','City','State','Pincode','Contact','Email','GST Registered (Yes/No)','GSTN','Bank Name','Account No','IFSC','Branch','Credit Days'],
+    ]},
+    {name:'README',data:[
+      ['AccounTally Pro — Import Instructions'],
+      [],
+      ['HOW TO IMPORT:'],
+      ['1. Fill the Accounts sheet with your chart of accounts'],
+      ['2. Fill Vouchers sheet with your transactions (one line per entry, group by Voucher ID)'],
+      ['3. Fill Vendors sheet with your supplier details'],
+      ['4. Fill Debtors sheet with your customer details'],
+      ['5. Save this file'],
+      ['6. In AccounTally Pro, go to Excel Import/Export → Upload Excel File'],
+      ['7. Preview the data and click Import'],
+      [],
+      ['IMPORTANT NOTES:'],
+      ['- Do not change the column headers (row 4 in each sheet)'],
+      ['- Dates must be in YYYY-MM-DD format'],
+      ['- Account Type must be: Asset, Liability, Income, Expense, or Capital'],
+      ['- Voucher Type must be: Receipt, Payment, Sales, Purchase, Journal, Contra, Debit Note, or Credit Note'],
+      ['- GST Registered field: Enter Yes or No'],
+    ]}
+  ];
+  exportMultiXLS(sheets,`AccounTally_Import_Template.xlsx`);
+}
+
+let importedData=null;
+
+function parseExcelImport(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'binary'});
+      importedData={accounts:[],vouchers:[],vendors:[],debtors:[]};
+      // Parse Accounts
+      if(wb.SheetNames.includes('Accounts')){
+        const ws=wb.Sheets['Accounts'];
+        const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''}).slice(3).filter(r=>r[0]);
+        importedData.accounts=rows.map(r=>({id:String(r[0]).trim(),name:String(r[1]).trim(),group:String(r[2]).trim(),type:String(r[3]).trim(),balance:parseFloat(r[4])||0,nature:String(r[5]).trim()||'Dr'})).filter(a=>a.id&&a.name);
+      }
+      // Parse Vouchers
+      if(wb.SheetNames.includes('Vouchers')){
+        const ws=wb.Sheets['Vouchers'];
+        const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''}).slice(3).filter(r=>r[0]);
+        const vmap={};
+        rows.forEach(r=>{
+          const vid=String(r[0]).trim();
+          if(!vmap[vid])vmap[vid]={id:vid,date:String(r[1]).trim(),type:String(r[2]).trim(),narration:String(r[6]).trim(),ref:String(r[7]).trim()||'',dueDate:String(r[8]).trim()||'',partyId:'',entries:[]};
+          vmap[vid].entries.push({accId:String(r[3]).trim(),dr:parseFloat(r[4])||0,cr:parseFloat(r[5])||0});
+        });
+        importedData.vouchers=Object.values(vmap).filter(v=>v.entries.length>=2);
+      }
+      // Parse Vendors
+      if(wb.SheetNames.includes('Vendors')){
+        const ws=wb.Sheets['Vendors'];
+        const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''}).slice(3).filter(r=>r[0]);
+        importedData.vendors=rows.map((r,i)=>({id:'v'+i,name:String(r[0]).trim(),address:String(r[1]).trim(),city:String(r[2]).trim(),state:String(r[3]).trim(),pincode:String(r[4]).trim(),contact:String(r[5]).trim(),email:String(r[6]).trim(),gstRegistered:String(r[7]).toLowerCase()==='yes',gstn:String(r[8]).trim(),bankName:String(r[9]).trim(),bankAccount:String(r[10]).trim(),bankIFSC:String(r[11]).trim(),bankBranch:String(r[12]).trim(),creditDays:parseInt(r[13])||30})).filter(v=>v.name);
+      }
+      // Parse Debtors
+      if(wb.SheetNames.includes('Debtors')){
+        const ws=wb.Sheets['Debtors'];
+        const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''}).slice(3).filter(r=>r[0]);
+        importedData.debtors=rows.map((r,i)=>({id:'d'+i,name:String(r[0]).trim(),address:String(r[1]).trim(),city:String(r[2]).trim(),state:String(r[3]).trim(),pincode:String(r[4]).trim(),contact:String(r[5]).trim(),email:String(r[6]).trim(),gstRegistered:String(r[7]).toLowerCase()==='yes',gstn:String(r[8]).trim(),bankName:String(r[9]).trim(),bankAccount:String(r[10]).trim(),bankIFSC:String(r[11]).trim(),bankBranch:String(r[12]).trim(),creditDays:parseInt(r[13])||30})).filter(d=>d.name);
+      }
+      // Show preview
+      const jsonStr=JSON.stringify(importedData,null,2);
+      eid('import-preview').innerHTML=`
+      <div class="card" style="padding:20px;">
+        <div style="font-weight:700;font-size:14px;margin-bottom:12px;">📋 Import Preview (JSON)</div>
+        <div class="g2" style="margin-bottom:14px;">
+          <div class="al al-i" style="margin:0;">📋 Accounts: <strong>${importedData.accounts.length}</strong></div>
+          <div class="al al-i" style="margin:0;">📝 Vouchers: <strong>${importedData.vouchers.length}</strong></div>
+          <div class="al al-i" style="margin:0;">🏭 Vendors: <strong>${importedData.vendors.length}</strong></div>
+          <div class="al al-i" style="margin:0;">🤝 Debtors: <strong>${importedData.debtors.length}</strong></div>
+        </div>
+        <div style="background:#f8fafc;border:1px solid var(--bdr);border-radius:8px;padding:12px;max-height:250px;overflow-y:auto;font-family:var(--mono);font-size:11px;white-space:pre-wrap;margin-bottom:14px;">${jsonStr.slice(0,3000)}${jsonStr.length>3000?'\n... [truncated for preview]':''}</div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-s" onclick="doImportExcel('merge')">✅ Import (Merge with existing)</button>
+          <button class="btn btn-d" onclick="doImportExcel('replace')">⚠ Import (Replace all data)</button>
+          <button class="btn btn-p" onclick="downloadImportedJSON()">⬇ Download as JSON</button>
+        </div>
+      </div>`;
+    }catch(err){eid('import-preview').innerHTML=`<div class="al al-d">Error parsing Excel: ${err.message}</div>`;}
+  };
+  reader.readAsBinaryString(file);
+  input.value='';
+}
+
+function doImportExcel(mode){
+  if(!importedData)return alert('No data to import');
+  if(!confirm(`This will ${mode==='replace'?'REPLACE ALL your data':'merge imported data with existing'}. Continue?`))return;
+  if(mode==='replace'){
+    state.accounts=importedData.accounts;
+    state.vouchers=importedData.vouchers;
+    state.vendors=importedData.vendors;
+    state.debtors=importedData.debtors;
+  }else{
+    // Merge: add new IDs, skip duplicates
+    importedData.accounts.forEach(a=>{if(!state.accounts.find(x=>x.id===a.id))state.accounts.push(a);});
+    importedData.vouchers.forEach(v=>{if(!state.vouchers.find(x=>x.id===v.id))state.vouchers.push(v);});
+    importedData.vendors.forEach(v=>{if(!state.vendors.find(x=>x.name===v.name))state.vendors.push(v);});
+    importedData.debtors.forEach(d=>{if(!state.debtors.find(x=>x.name===d.name))state.debtors.push(d);});
+  }
+  scheduleSave();
+  alert(`Import successful! ${importedData.accounts.length} accounts, ${importedData.vouchers.length} vouchers imported.`);
+  importedData=null;
+  pgImport();
+}
+
+function downloadImportedJSON(){
+  if(!importedData)return;
+  const blob=new Blob([JSON.stringify(importedData,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`AccounTally_Import_Data_${today()}.json`;a.click();
+}
+
+function exportAllExcel(){
+  const L=computeLedger();
+  const rows=state.accounts.map(a=>({...a,...L[a.id]}));
+  exportMultiXLS([
+    {name:'Accounts',data:[['Account ID','Account Name','Group','Type','Opening Bal','Nature'],...state.accounts.map(a=>[a.id,a.name,a.group,a.type,a.balance,a.nature])]},
+    {name:'Vouchers',data:[['Voucher ID','Date','Type','Account ID','Debit','Credit','Narration','Ref','Due Date'],...state.vouchers.flatMap(v=>v.entries.map(e=>[v.id,v.date,v.type,e.accId,e.dr||0,e.cr||0,v.narration,v.ref||'',v.dueDate||'']))]},
+    {name:'Vendors',data:[['Name','Address','City','State','Pincode','Contact','Email','GST Registered','GSTN','Bank Name','Account No','IFSC','Branch','Credit Days'],...state.vendors.map(v=>[v.name,v.address,v.city,v.state,v.pincode,v.contact,v.email,v.gstRegistered?'Yes':'No',v.gstn,v.bankName,v.bankAccount,v.bankIFSC,v.bankBranch,v.creditDays])]},
+    {name:'Debtors',data:[['Name','Address','City','State','Pincode','Contact','Email','GST Registered','GSTN','Bank Name','Account No','IFSC','Branch','Credit Days'],...state.debtors.map(d=>[d.name,d.address,d.city,d.state,d.pincode,d.contact,d.email,d.gstRegistered?'Yes':'No',d.gstn,d.bankName,d.bankAccount,d.bankIFSC,d.bankBranch,d.creditDays])]},
+    {name:'Trial Balance',data:[['Account ID','Account Name','Debit','Credit'],...rows.map(r=>[r.id,r.name,r.closingDr||0,r.closingCr||0])]},
+  ],`${state.company.replace(/\s+/g,'_')}_Complete_Export_${today()}.xlsx`);
+}
+function exportJSON(){
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`AccounTally_Backup_${today()}.json`;a.click();
+}
+function importJSON(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!data.accounts||!data.vouchers)throw new Error('Invalid backup file');
+      if(!confirm('Replace ALL current data with backup? This cannot be undone.'))return;
+      state={...DEFAULT_STATE,...data};
+      scheduleSave();
+      alert('Backup restored successfully!');
+      navigate('dashboard');
+    }catch(err){alert('Import failed: '+err.message);}
+  };
+  reader.readAsText(file);
+  input.value='';
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  PAGE: SETTINGS
+// ══════════════════════════════════════════════════════════════════
+function pgSettings(){
+  const fyList=generateFYList();const stateOpts=INDIAN_STATES.map(s=>`<option value="${s}" ${s===(state.companyState||'Maharashtra')?'selected':''}>${s}</option>`).join('');
+  eid('content').innerHTML=`
+  <div style="max-width:700px;">
+    <div class="card" style="padding:22px;margin-bottom:14px;">
+      <div style="font-size:15px;font-weight:700;margin-bottom:14px;">🏢 Company Settings</div>
+      <div class="fg">
+        <div class="fgr" style="grid-column:span 2;"><label class="fl">Company Name *</label><input class="fc" id="s-co" value="${state.company}" placeholder="Your company name"></div>
+        <div class="fgr" style="grid-column:span 2;"><label class="fl">Company Address</label><input class="fc" id="s-addr" value="${state.address||''}" placeholder="Registered address"></div>
+        <div class="fgr"><label class="fl">GSTIN</label><input class="fc" id="s-gstin" value="${state.gstin||''}" placeholder="27AABCU9603R1ZX" maxlength="15" style="text-transform:uppercase;"></div>
+        <div class="fgr"><label class="fl">State</label><select class="fc" id="s-cstate">${stateOpts}</select></div>
+        <div class="fgr"><label class="fl">Financial Year</label>
+          <select class="fc" id="s-fy">${fyList.map(f=>`<option value="${f}" ${f===state.fy?'selected':''}>${f}</option>`).join('')}</select>
+        </div>
+        <div class="fgr"><label class="fl">PAN</label><input class="fc" id="s-pan" value="${state.pan||''}" placeholder="AABCU9603R" maxlength="10" style="text-transform:uppercase;"></div>
+        <div class="fgr"><label class="fl">FY Start Date</label><input type="date" class="fc" id="s-fys" value="${state.fyStart}"></div>
+        <div class="fgr"><label class="fl">FY End Date</label><input type="date" class="fc" id="s-fye" value="${state.fyEnd}"></div>
+        <div class="fgr"><label class="fl">Email</label><input type="email" class="fc" id="s-email" value="${state.email||''}" placeholder="company@email.com"></div>
+        <div class="fgr"><label class="fl">Phone</label><input class="fc" id="s-phone" value="${state.phone||''}" placeholder="Contact number"></div>
+      </div>
+      <button class="btn btn-p" style="margin-top:14px;" onclick="saveSettings()">💾 Save Company Settings</button>
+    </div>
+
+    <div class="card" style="padding:22px;margin-bottom:14px;">
+      <div style="font-size:15px;font-weight:700;margin-bottom:14px;">👥 User Management</div>
+      <div id="user-list-wrap">Loading...</div>
+      <button class="btn btn-p" style="margin-top:12px;" onclick="openAddUserForm()">+ Add New User</button>
+    </div>
+
+    <div class="card" style="padding:22px;margin-bottom:14px;">
+      <div style="font-size:15px;font-weight:700;margin-bottom:4px;">💾 Storage Info</div>
+      <div style="font-size:12px;color:var(--tm);margin-bottom:12px;">All data is permanently stored in your browser's IndexedDB. It survives restarts and cache clears (unless you clear site data).</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-s" onclick="exportAllExcel()">⬇ Export Full Data (Excel)</button>
+        <button class="btn btn-p" onclick="exportJSON()">💾 JSON Backup</button>
+        <button class="btn btn-g" onclick="eid('json-upload2').click()">📂 Restore JSON</button>
+        <input type="file" id="json-upload2" accept=".json" style="display:none;" onchange="importJSON(this)">
+      </div>
+    </div>
+
+    <div class="card" style="padding:22px;border:2px solid #fca5a5;">
+      <div style="font-size:15px;font-weight:700;margin-bottom:4px;color:var(--bad);">⚠ Danger Zone</div>
+      <div style="font-size:12px;color:var(--tm);margin-bottom:12px;">Permanently delete all accounting data and reset to defaults. This cannot be undone.</div>
+      <button class="btn btn-d" onclick="resetAllData()">🗑 Reset All Data</button>
+    </div>
+  </div>`;
+  loadUserList();
+}
+
+async function loadUserList(){
+  const wrap=eid('user-list-wrap');if(!wrap)return;
+  try{
+    const users=await DB.getAll('users');
+    wrap.innerHTML=users.length?`<div class="card"><table class="tbl">
+      <thead><tr><th>Username</th><th>Role</th><th class="no-print">Action</th></tr></thead>
+      <tbody>${users.map(u=>`<tr><td class="fw-bold">${u.username}</td><td><span class="badge bb">${u.role||'user'}</span></td>
+        <td>${u.username!==currentUser?.username?`<button class="btn btn-d btn-sm" onclick="delUser('${u.username}')">Del</button>`:'<span class="badge bg-">You</span>'}</td>
+      </tr>`).join('')}</tbody></table></div>`:'<div class="al al-i">No users found.</div>';
+  }catch(e){if(wrap)wrap.innerHTML='<div class="al al-d">Error loading users</div>';}
+}
+
+function openAddUserForm(){
+  openModal('Add New User',`
+  <div class="fg">
+    <div class="fgr"><label class="fl">Username *</label><input class="fc" id="nu-user" placeholder="Username"></div>
+    <div class="fgr"><label class="fl">Role</label><select class="fc" id="nu-role"><option>admin</option><option>user</option></select></div>
+    <div class="fgr"><label class="fl">Password *</label><input type="password" class="fc" id="nu-pass" placeholder="Min 4 chars"></div>
+    <div class="fgr"><label class="fl">Confirm Password *</label><input type="password" class="fc" id="nu-pass2" placeholder="Re-enter"></div>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:14px;">
+    <button class="btn btn-p" onclick="addNewUser()">💾 Create User</button>
+    <button class="btn btn-g" onclick="closeModal()">Cancel</button>
+  </div>`);
+}
+async function addNewUser(){
+  const u=eid('nu-user').value.trim(),r=eid('nu-role').value;
+  const p=eid('nu-pass').value,p2=eid('nu-pass2').value;
+  if(!u||!p)return alert('Username and password required');
+  if(p!==p2)return alert('Passwords do not match');
+  if(p.length<4)return alert('Password must be at least 4 characters');
+  const existing=await DB.get('users',u);
+  if(existing)return alert('Username already exists');
+  const h=await sha256(p);
+  await DB.set('users',u,{id:'u'+Date.now(),username:u,passwordHash:h,role:r});
+  closeModal();loadUserList();
+}
+async function delUser(username){
+  if(!confirm(`Delete user "${username}"?`))return;
+  await DB.del('users',username);
+  loadUserList();
+}
+
+function saveSettings(){
+  const co=eid('s-co').value.trim()||state.company;
+  if(!co)return alert('Company name is required');
+  const fy=eid('s-fy').value;
+  const range=fyRange(fy);
+  state.company=co;
+  state.fy=fy;
+  state.fyStart=eid('s-fys').value||range.start;
+  state.fyEnd=eid('s-fye').value||range.end;
+  state.gstin=(eid('s-gstin')?.value.toUpperCase().trim())||state.gstin||'';
+  state.companyState=eid('s-cstate')?.value||state.companyState||'Maharashtra';
+  state.pan=(eid('s-pan')?.value.toUpperCase().trim())||state.pan||'';
+  state.address=eid('s-addr')?.value.trim()||state.address||'';
+  state.email=eid('s-email')?.value.trim()||state.email||'';
+  state.phone=eid('s-phone')?.value.trim()||state.phone||'';
+  scheduleSave();
+  eid('sb-company').textContent=co;
+  eid('sb-fy').textContent='FY '+fy;
+  eid('top-fy').textContent='FY '+fy;
+  if(eid('topbar-gstin'))eid('topbar-gstin').textContent=state.gstin?'GSTIN: '+state.gstin:'';
+  showToast('✅ Company settings saved!','#059669');
+}
+
+// Auto-update FY dates when FY dropdown changes
+document.addEventListener('change',function(e){
+  if(e.target&&e.target.id==='s-fy'){
+    const r=fyRange(e.target.value);
+    if(eid('s-fys'))eid('s-fys').value=r.start;
+    if(eid('s-fye'))eid('s-fye').value=r.end;
+  }
+});
+
+function resetAllData(){
+  if(!confirm('Delete ALL data and reset to defaults?\nThis will clear all vouchers, parties, items, and balances.'))return;
+  if(!confirm('FINAL CONFIRMATION: This cannot be undone. All your accounting data will be deleted.'))return;
+  const co=state.company,fy=state.fy,gs=state.gstin,cs=state.companyState,pa=state.pan,ad=state.address,em=state.email,ph=state.phone;
+  state=JSON.parse(JSON.stringify(DEFAULT_STATE));
+  state.company=co;state.fy=fy;state.gstin=gs||'';state.companyState=cs||'Maharashtra';
+  state.pan=pa||'';state.address=ad||'';state.email=em||'';state.phone=ph||'';
+  scheduleSave();
+  showToast('🗑 All transaction data cleared. Company settings retained.','#dc2626');
+  navigate('dashboard');
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════════════
+async function init(){
+  try{
+    await DB.open();
+    // Load state
+    const saved=await DB.get('data','state');
+    if(saved)state={...DEFAULT_STATE,...saved};
+    // Check if any users exist
+    const users=await DB.getAll('users');
+    if(!users||users.length===0){
+      // First launch — show setup
+      document.getElementById('login-form-wrap').classList.add('hidden');
+      document.getElementById('setup-form-wrap').classList.remove('hidden');
+    }
+    // Set date display
+    const now=new Date();
+    document.getElementById('sb-company').textContent=state.company;
+    document.getElementById('sb-fy').textContent='FY '+state.fy;
+    document.getElementById('top-fy').textContent='FY '+state.fy;
+  }catch(e){
+    console.error('Init error:',e);
+    alert('Database error: '+e.message+'\nUsing temporary storage.');
+    // Fallback: load from localStorage
+    try{const ls=localStorage.getItem('accountally_fallback');if(ls)state=JSON.parse(ls);}catch(_){}
+    // Skip login for fallback
+    document.getElementById('login-wrap').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    navigate('dashboard');
+  }
+}
+
+// Close modal on overlay click
+document.getElementById('modal').addEventListener('click',function(e){
+  if(e.target===this)closeModal();
+});
+
+init();
+</script>
+</body>
+</html>
