@@ -436,6 +436,7 @@ async function doLogin(){
   const found=users.find(x=>x.username===u&&x.passwordHash===h);
   if(!found){showLoginErr('Invalid username or password.');return;}
   currentUser=found;
+  sessionStorage.setItem('loggedInUser', found.username);
   document.getElementById('login-wrap').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('usr-btn').textContent=`👤 ${found.username} ▾`;
@@ -460,6 +461,7 @@ async function doSetup(){
   state=s;
   await saveState();
   currentUser=user;
+  sessionStorage.setItem('loggedInUser', u);
   document.getElementById('login-wrap').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('usr-btn').textContent=`👤 ${u} ▾`;
@@ -485,6 +487,7 @@ function showUserMenu(){
 function doLogout(){
   closeModal();
   currentUser=null;
+  sessionStorage.removeItem('loggedInUser');
   document.getElementById('app').classList.add('hidden');
   document.getElementById('login-wrap').classList.remove('hidden');
   document.getElementById('li-user').value='';
@@ -2889,12 +2892,26 @@ async function init(){
       // First launch — show setup
       document.getElementById('login-form-wrap').classList.add('hidden');
       document.getElementById('setup-form-wrap').classList.remove('hidden');
+    } else {
+      // ── Restore session after refresh ──
+      const savedUsername=sessionStorage.getItem('loggedInUser');
+      if(savedUsername){
+        const user=users.find(u=>u.username===savedUsername);
+        if(user){
+          currentUser=user;
+          document.getElementById('login-wrap').classList.add('hidden');
+          document.getElementById('app').classList.remove('hidden');
+          document.getElementById('usr-btn').textContent=`👤 ${user.username} ▾`;
+        }
+      }
     }
     // Set date display
     const now=new Date();
     document.getElementById('sb-company').textContent=state.company;
     document.getElementById('sb-fy').textContent='FY '+state.fy;
     document.getElementById('top-fy').textContent='FY '+state.fy;
+    // Navigate to dashboard if session was restored
+    if(currentUser) navigate('dashboard');
   }catch(e){
     console.error('Init error:',e);
     alert('Database error: '+e.message+'\nUsing temporary storage.');
