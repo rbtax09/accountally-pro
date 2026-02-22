@@ -10,6 +10,7 @@
 :root{--bg:#f0f2f5;--sidebar:#0f172a;--primary:#2563eb;--pd:#1d4ed8;--ok:#059669;--bad:#dc2626;--warn:#d97706;--sur:#fff;--bdr:#e2e8f0;--txt:#1e293b;--tm:#64748b;--tl:#94a3b8;--mono:'IBM Plex Mono',monospace;--font:'IBM Plex Sans',sans-serif;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:var(--font);background:var(--bg);color:var(--txt);height:100vh;display:flex;overflow:hidden;font-size:13px;}
+#app{flex:1;min-width:0;width:100%;}
 .hidden{display:none!important;}
 
 /* ── LOGIN ── */
@@ -48,7 +49,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--txt);height:100vh;
 #sidebar.col .nsec,#sidebar.col .nlb,#sidebar.col .ltxt{display:none;}
 
 /* ── MAIN ── */
-#main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+#main{flex:1;min-width:0;width:100%;display:flex;flex-direction:column;overflow:hidden;}
 #topbar{background:var(--sur);border-bottom:1px solid var(--bdr);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,.05);}
 .pg-title{font-size:15px;font-weight:700;color:var(--txt);}
 .tbr{display:flex;align-items:center;gap:8px;}
@@ -58,7 +59,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--txt);height:100vh;
 .save-ing{background:#fefce8;color:#b45309;border:1px solid #fde68a;}
 .usr-badge{background:#f1f5f9;color:#475569;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;cursor:pointer;}
 .usr-badge:hover{background:#e2e8f0;}
-#content{flex:1;overflow-y:auto;padding:18px 22px;}
+#content{flex:1;min-height:0;overflow-y:auto;padding:18px 22px;width:100%;}
+.page-full{display:flex;flex-direction:column;min-height:calc(100vh - 88px);}
+.page-full .pf-grid{flex:1;}
 
 /* ── CARDS & COMPONENTS ── */
 .card{background:var(--sur);border:1px solid var(--bdr);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.04);}
@@ -237,7 +240,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--txt);height:100vh;
 </div>
 
 <!-- ══ APP ══ -->
-<div id="app" class="hidden" style="display:flex;height:100vh;overflow:hidden;">
+<div id="app" class="hidden" style="display:flex;width:100%;height:100vh;overflow:hidden;">
   <nav id="sidebar">
     <div class="slg">
       <button class="stog" onclick="toggleSidebar()">☰</button>
@@ -1867,15 +1870,17 @@ function pgTrial(){
     </tr>`);
   });
   eid('content').innerHTML=`
+  <div class="page-full">
   <div class="tb no-print">
     <div class="${bal?'al al-s':'al al-d'}" style="margin:0;padding:8px 13px;">${bal?'✓ Trial Balance is Balanced':'⚠ Not Balanced — Diff: '+fmt(Math.abs(totDr-totCr))}</div>
     <button class="btn btn-s" onclick="exportTrial()" style="margin-left:auto;">⬇ Excel</button>
   </div>
-  <div class="card"><table class="tbl">
+  <div class="card pf-grid"><table class="tbl">
     <thead><tr><th style="width:13%">Acc. ID</th><th>Account Name</th><th class="tr" style="width:22%">Debit (Dr)</th><th class="tr" style="width:22%">Credit (Cr)</th></tr></thead>
     <tbody>${tableRows}</tbody>
     <tfoot><tr class="tf"><td colspan="2" class="tr">GRAND TOTAL</td><td class="tr">${fmtN(totDr)}</td><td class="tr">${fmtN(totCr)}</td></tr></tfoot>
-  </table></div>`;
+  </table></div>
+  </div>`;
 }
 function exportTrial(){
   const L=computeLedger();const rows=state.accounts.map(a=>({...a,...L[a.id]}));
@@ -1898,6 +1903,7 @@ function pgPnL(){
   const gI=sC(sI)+sC(dI),gE=sD(pE)+sD(dE),gP=gI-gE,iI=sC(inI),iE=sD(inE),nP=gP+iI-iE;
   const rows=(arr,t='cr')=>arr.length?arr.map(a=>`<div class="rr"><span class="rrl">${a.name}</span><span class="rrv">${fmt(t==='cr'?a.closingCr:a.closingDr)}</span></div>`).join(''):`<div class="rr"><span class="rrl tm-" style="font-style:italic;">No entries</span></div>`;
   eid('content').innerHTML=`
+  <div class="page-full">
   <div class="tb no-print" style="margin-bottom:14px;">
     <div style="font-weight:700;font-size:14px;">Profit & Loss — FY ${state.fy}</div>
     <button class="btn btn-s" onclick="exportPnL()" style="margin-left:auto;">⬇ Excel</button>
@@ -1907,7 +1913,7 @@ function pgPnL(){
     <div class="sc ${nP>=0?'sc-b':'sc-r'}" style="border-radius:12px;"><div class="sl">Net ${nP>=0?'Profit':'Loss'}</div><div class="sv">${fmt(Math.abs(nP))}</div></div>
     <div class="sc sc-p" style="border-radius:12px;"><div class="sl">Net Margin</div><div class="sv">${gI>0?((nP/gI)*100).toFixed(1):0}%</div></div>
   </div>
-  <div class="g2">
+  <div class="g2 pf-grid" style="align-items:stretch;">
     <div class="rp"><div style="font-size:15px;font-weight:700;padding-bottom:11px;border-bottom:2px solid var(--bdr);margin-bottom:10px;">📈 Income</div>
       <div class="rst" style="margin-top:0;">Sales / Direct Income</div>${rows([...sI,...dI])}
       <div class="rtot rt-g"><span>Gross Income</span><span>${fmt(gI)}</span></div>
@@ -1921,6 +1927,7 @@ function pgPnL(){
       <div class="rtot rt-r" style="margin-top:8px;"><span>Total Expenses</span><span>${fmt(gE+iE)}</span></div>
       <div class="rg" style="background:${nP>=0?'#1e3a6e':'#7f1d1d'};margin-top:10px;"><span>NET ${nP>=0?'PROFIT':'LOSS'}</span><span>${fmt(Math.abs(nP))}</span></div>
     </div>
+  </div>
   </div>`;
 }
 function exportPnL(){
@@ -1953,12 +1960,13 @@ function pgBalance(){
   const totSrc=totCap+nP+totLiab;const bal=Math.abs(totSrc-totAssets)<1;
   const rows=(arr,k='closingCr')=>arr.map(a=>`<div class="rr"><span class="rrl">${a.name}</span><span class="rrv">${fmt(a[k]||0)}</span></div>`).join('');
   eid('content').innerHTML=`
+  <div class="page-full">
   <div class="tb no-print">
     <div style="font-weight:700;font-size:14px;">Balance Sheet — FY ${state.fy}</div>
     <div class="${bal?'al al-s':'al al-d'}" style="margin:0;padding:6px 12px;font-size:11px;">${bal?'✓ Balanced':'⚠ Diff: '+fmt(Math.abs(totSrc-totAssets))}</div>
     <button class="btn btn-s" onclick="exportBalance()" style="margin-left:auto;">⬇ Excel</button>
   </div>
-  <div class="g2">
+  <div class="g2 pf-grid" style="align-items:stretch;">
     <div class="rp"><div style="font-size:15px;font-weight:700;padding-bottom:11px;border-bottom:2px solid var(--bdr);margin-bottom:10px;">💳 Sources of Funds</div>
       <div class="rst" style="margin-top:0;">Capital & Reserves</div>${rows(cap)}
       <div class="rr" style="padding-left:12px;"><span>Add: Net ${nP>=0?'Profit':'Loss'}</span><span class="rrv ${nP>=0?'tg-':'tr-'}">${fmt(Math.abs(nP))}</span></div>
@@ -1974,6 +1982,7 @@ function pgBalance(){
       }).join('')}
       <div class="rg"><span>TOTAL ASSETS</span><span>${fmt(totAssets)}</span></div>
     </div>
+  </div>
   </div>`;
 }
 function exportBalance(){
@@ -2263,6 +2272,7 @@ function pgCashFlow(){
   const closingCash=openingCash+netCF;
 
   eid('content').innerHTML=`
+  <div class="page-full">
   <div class="tb no-print">
     <div style="font-weight:700;font-size:14px;">Cash Flow Statement — FY ${state.fy} (AS-3 Direct Method)</div>
     <button class="btn btn-s" onclick="exportCashFlow()" style="margin-left:auto;">⬇ Excel</button>
@@ -2273,7 +2283,7 @@ function pgCashFlow(){
     <div class="sc sc-o"><div class="sl">Financing CF</div><div class="sv">${fmt(Math.abs(financingCF))}</div><div class="ss">${financingCF>=0?'Inflow':'Outflow'}</div></div>
     <div class="sc ${netCF>=0?'sc-g':'sc-r'}"><div class="sl">Net Cash Flow</div><div class="sv">${fmt(Math.abs(netCF))}</div><div class="ss">${netCF>=0?'Net Inflow':'Net Outflow'}</div></div>
   </div>
-  <div class="g3">
+  <div class="g3 pf-grid" style="align-items:stretch;">
     <div class="rp">
       <div style="font-size:14px;font-weight:700;padding-bottom:10px;border-bottom:2px solid var(--bdr);margin-bottom:10px;">🔧 A. Operating Activities</div>
       <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--tl);margin-bottom:6px;">Cash Inflows</div>
@@ -2309,7 +2319,8 @@ function pgCashFlow(){
       <div style="text-align:right;"><div style="font-size:10px;opacity:.7;text-transform:uppercase;letter-spacing:1px;">Closing Cash & Bank Balance</div><div style="font-size:18px;font-weight:700;margin-top:4px;font-family:monospace;color:#93c5fd;">${fmt(closingCash)}</div></div>
     </div>
   </div>
-  <div class="al al-i" style="margin-top:10px;font-size:11px;">ℹ AS-3 Cash Flow Statement prepared using Direct Method. Figures derived from voucher entries and ledger balances.</div>`;
+  <div class="al al-i" style="margin-top:10px;font-size:11px;">ℹ AS-3 Cash Flow Statement prepared using Direct Method. Figures derived from voucher entries and ledger balances.</div>
+  </div>`;
 }
 
 function exportCashFlow(){
@@ -2353,6 +2364,7 @@ function pgTDS(){
   const totalTDS=Object.values(bySection).reduce((s,x)=>s+x.tdsAmt,0);
 
   eid('content').innerHTML=`
+  <div class="page-full">
   <div class="tb no-print">
     <div style="font-weight:700;font-size:14px;">TDS Report — FY ${state.fy}</div>
     <button class="btn btn-s" onclick="exportTDS()" style="margin-left:auto;">⬇ Export Form 26Q</button>
@@ -2369,10 +2381,11 @@ function pgTDS(){
     ${totalTDS>0?`<tfoot><tr class="tf"><td colspan="4">TOTAL TDS DEDUCTED</td><td class="tr"></td><td class="tr">${fmt(totalTDS)}</td></tr></tfoot>`:''}
   </table></div>
   <div style="font-weight:700;color:var(--tm);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Transaction Details</div>
-  <div class="card"><table class="tbl">
+  <div class="card pf-grid"><table class="tbl">
     <thead><tr><th>Date</th><th>Voucher</th><th>Type</th><th>Narration</th><th>Section</th><th class="tr">Amount</th><th class="tr">TDS</th></tr></thead>
     <tbody>${detailRows||'<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--tm);">No TDS vouchers found</td></tr>'}</tbody>
-  </table></div>`;
+  </table></div>
+  </div>`;
 }
 
 function exportTDS(){
@@ -2424,6 +2437,7 @@ function renderGST(filter){
   }).join('');
 
   eid('content').innerHTML=`
+  <div class="page-full">
   <div class="tb no-print">
     <div style="font-weight:700;font-size:14px;">GST Reports — FY ${state.fy}${state.gstin?' | GSTIN: '+state.gstin:''}</div>
     <button class="btn btn-s" onclick="exportGSTReport()" style="margin-left:auto;">⬇ Export GSTR Excel</button>
@@ -2457,7 +2471,7 @@ function renderGST(filter){
     </div>
   </div>
 
-  <div class="g2" style="gap:14px;">
+  <div class="g2 pf-grid" style="gap:14px;align-items:stretch;">
     <div>
       <div style="font-weight:700;color:#1d4ed8;font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:7px;">GSTR-1: Sales Register (Output Tax)</div>
       <div class="card"><table class="tbl">
@@ -2472,6 +2486,7 @@ function renderGST(filter){
         <tbody>${pRows||'<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--tm)">No purchases</td></tr>'}</tbody>
       </table></div>
     </div>
+  </div>
   </div>`;
 }
 function exportGSTReport(){
