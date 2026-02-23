@@ -288,6 +288,13 @@ input[type=number]{-moz-appearance:textfield;}
       <div class="ni" id="nav-import" onclick="navigate('import')"><span class="nico">🔄</span><span class="nlb">Excel Import/Export</span></div>
       <div class="nsec">Admin</div>
       <div class="ni" id="nav-settings" onclick="navigate('settings')"><span class="nico">⚙️</span><span class="nlb">Settings</span></div>
+      <div class="nsec">Billing</div>
+      <div class="ni" id="nav-invoice" onclick="navigate('invoice')"><span class="nico">🧾</span><span class="nlb">GST Invoices</span></div>
+      <div class="nsec">HR &amp; Payroll</div>
+      <div class="ni" id="nav-employees" onclick="navigate('employees')"><span class="nico">👥</span><span class="nlb">Employee Master</span></div>
+      <div class="ni" id="nav-payroll" onclick="navigate('payroll')"><span class="nico">💼</span><span class="nlb">Payroll Processing</span></div>
+      <div class="nsec">Users</div>
+      <div class="ni" id="nav-usermgmt" onclick="navigate('usermgmt')"><span class="nico">🔐</span><span class="nlb">User Management</span></div>
     </div>
   </nav>
   <div id="main">
@@ -390,6 +397,10 @@ const DEFAULT_STATE = {
   items:[],
   bankStatements:[],
   advances:[],
+  invoices:[],
+  employees:[],
+  payroll:[],
+  appUsers:[],
 };
 
 // ══ SUPABASE CLIENT ══
@@ -467,8 +478,27 @@ async function doLogin(){
   sessionStorage.setItem('loggedInUser', found.username);
   document.getElementById('login-wrap').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
-  document.getElementById('usr-btn').textContent=`👤 ${found.username} ▾`;
+  const roleLabel=found.role==='admin'?'👑':found.role==='accountant'?'📊':'👁';
+  document.getElementById('usr-btn').textContent=`${roleLabel} ${found.username} ▾`;
+  applyRoleRestrictions(found.role);
   navigate('dashboard');
+}
+
+function applyRoleRestrictions(role){
+  // Hide user management for non-admins
+  const umNav=document.getElementById('nav-usermgmt');
+  if(umNav)umNav.style.display=(role==='admin'?'':'none');
+  // Hide settings for viewers
+  const stNav=document.getElementById('nav-settings');
+  if(stNav&&role==='viewer')stNav.style.display='none';
+  // Restrict voucher entry for viewers
+  const vNav=document.getElementById('nav-vouchers');
+  if(vNav&&role==='viewer')vNav.style.opacity='0.4';
+}
+
+function canEdit(){
+  if(!currentUser)return false;
+  return currentUser.role==='admin'||currentUser.role==='accountant';
 }
 
 async function doSetup(){
@@ -480,12 +510,13 @@ async function doSetup(){
   if(p!==p2){showLoginErr('Passwords do not match.');return;}
   if(p.length<4){showLoginErr('Password must be at least 4 characters.');return;}
   const h=await sha256(p);
-  const user={id:'u1',username:u,passwordHash:h,role:'admin'};
+  const user={id:'u1',username:u,passwordHash:h,role:'admin',fullName:u,createdAt:new Date().toISOString()};
   await DB.set('users',u,user);
   // init state with company name
   const gstin2=(eid('su-gstin')?.value||'').toUpperCase().trim();
   const s=JSON.parse(JSON.stringify(DEFAULT_STATE));
   s.company=co;s.gstin=gstin2;
+  s.appUsers=[{username:u,role:'admin',fullName:u,createdAt:new Date().toISOString()}];
   state=s;
   await saveState();
   currentUser=user;
@@ -504,10 +535,16 @@ function showLoginErr(msg){
 }
 
 function showUserMenu(){
+  const roleInfo={admin:'👑 Admin',accountant:'📊 Accountant',viewer:'👁 Viewer'};
   openModal('User Menu',`
-    <p style="color:var(--tm);margin-bottom:16px;">Logged in as <strong>${currentUser?.username}</strong></p>
+    <div style="text-align:center;padding:10px 0 16px;">
+      <div style="font-size:32px;">${currentUser?.role==='admin'?'👑':currentUser?.role==='accountant'?'📊':'👁'}</div>
+      <div style="font-weight:700;font-size:16px;margin-top:6px;">${currentUser?.username}</div>
+      <div style="color:var(--tm);font-size:12px;">${roleInfo[currentUser?.role]||'User'}</div>
+    </div>
     <div style="display:flex;flex-direction:column;gap:10px;">
-      <button class="btn btn-g" style="justify-content:flex-start;" onclick="closeModal();navigate('settings')">⚙️ Settings</button>
+      ${currentUser?.role==='admin'?'<button class="btn btn-g" style="justify-content:flex-start;" onclick="closeModal();navigate('settings')">⚙️ Settings</button>':''}
+      ${currentUser?.role==='admin'?'<button class="btn btn-g" style="justify-content:flex-start;" onclick="closeModal();navigate('usermgmt')">🔐 User Management</button>':''}
       <button class="btn btn-d" style="justify-content:flex-start;" onclick="doLogout()">🚪 Logout</button>
     </div>
   `);
@@ -607,7 +644,9 @@ const PTITLES={dashboard:'🏠 Dashboard',accounts:'📋 Chart of Accounts',item
   tds:'📑 TDS Reports',import:'🔄 Excel Import / Export',settings:'⚙️ Settings',
   'reg-sales':'🧾 Sales Register','reg-purchase':'🛒 Purchase Register',
   'reg-debit':'📤 Debit Note Register','reg-credit':'📥 Credit Note Register',
-  'reg-journal':'📓 Journal Register'};
+  'reg-journal':'📓 Journal Register',
+  invoice:'🧾 GST Invoice Generator',employees:'👥 Employee Master',
+  payroll:'💼 Payroll Processing',usermgmt:'🔐 User Management'};
 
 function navigate(page){
   if(typeof destroyDashCharts==='function') destroyDashCharts();
@@ -619,6 +658,7 @@ function navigate(page){
     vouchers:pgVouchers,advances:pgAdvances,daybook:pgDayBook,cashbook:pgCashBook,ledger:pgLedger,
     bankrecon:pgBankRecon,trial:pgTrial,pnl:pgPnL,balance:pgBalance,cashflow:pgCashFlow,
     gst:pgGST,tds:pgTDS,import:pgImport,settings:pgSettings,
+    invoice:pgInvoice,employees:pgEmployees,payroll:pgPayroll,usermgmt:pgUserMgmt,
     'reg-sales':()=>pgRegister('Sales'),'reg-purchase':()=>pgRegister('Purchase'),
     'reg-debit':()=>pgRegister('Debit Note'),'reg-credit':()=>pgRegister('Credit Note'),
     'reg-journal':()=>pgRegister('Journal')};
@@ -3327,6 +3367,784 @@ function resetAllData(){
 }
 
 // ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════
+//  PAGE: GST INVOICE GENERATOR
+// ══════════════════════════════════════════════════════════════════
+let invFilter='all';
+function pgInvoice(){
+  if(!state.invoices)state.invoices=[];
+  const list=state.invoices.filter(inv=>invFilter==='all'||inv.status===invFilter);
+  const rows=list.sort((a,b)=>b.date.localeCompare(a.date)).map((inv,i)=>{
+    const total=inv.items.reduce((s,it)=>s+(it.qty*it.rate*(1+(it.gst||0)/100)),0);
+
+    return `<tr class="${i%2?'alt':''}">
+      <td class="mono tb-">${inv.id}</td>
+      <td>${fmtD(inv.date)}</td>
+      <td>${inv.customer||'—'}</td>
+      <td class="tr mono">${fmt(total)}</td>
+      <td><span class="badge ${inv.status==='paid'?'bg-':inv.status==='cancelled'?'br':'by'}">${inv.status||'draft'}</span></td>
+      <td>
+        <button class="btn btn-g btn-sm" onclick="viewInvoice('${inv.id}')">👁 View</button>
+        <button class="btn btn-p btn-sm" onclick="printInvoice('${inv.id}')">🖨 Print</button>
+        ${inv.status!=='paid'?`<button class="btn btn-s btn-sm" onclick="markInvPaid('${inv.id}')">✅ Paid</button>`:''}
+        <button class="btn btn-d btn-sm" onclick="deleteInvoice('${inv.id}')">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const totalInv=state.invoices.reduce((s,inv)=>s+inv.items.reduce((ss,it)=>ss+(it.qty*it.rate*(1+(it.gst||0)/100)),0),0);
+  const paidInv=state.invoices.filter(i=>i.status==='paid').reduce((s,inv)=>s+inv.items.reduce((ss,it)=>ss+(it.qty*it.rate*(1+(it.gst||0)/100)),0),0);
+  const pendingInv=totalInv-paidInv;
+
+  eid('content').innerHTML=`
+  <div class="sg" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px;">
+    <div class="sc sc-b"><div class="sl">Total Invoices</div><div class="sv">${state.invoices.length}</div><div class="ss">All time</div></div>
+    <div class="sc sc-g"><div class="sl">Total Billed</div><div class="sv">${fmt(totalInv)}</div><div class="ss">Incl. GST</div></div>
+    <div class="sc sc-p"><div class="sl">Paid</div><div class="sv">${fmt(paidInv)}</div><div class="ss">${state.invoices.filter(i=>i.status==='paid').length} invoices</div></div>
+    <div class="sc sc-o"><div class="sl">Pending</div><div class="sv">${fmt(pendingInv)}</div><div class="ss">${state.invoices.filter(i=>i.status!=='paid'&&i.status!=='cancelled').length} invoices</div></div>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+    <div class="tg">
+      <button class="t ${invFilter==='all'?'act':''}" onclick="invFilter='all';pgInvoice()">All</button>
+      <button class="t ${invFilter==='draft'?'act':''}" onclick="invFilter='draft';pgInvoice()">Draft</button>
+      <button class="t ${invFilter==='paid'?'act':''}" onclick="invFilter='paid';pgInvoice()">Paid</button>
+    </div>
+    <button class="btn btn-p" onclick="openNewInvoice()">➕ New GST Invoice</button>
+  </div>
+  <div class="card">
+    <table class="tbl">
+      <thead><tr><th>Invoice No</th><th>Date</th><th>Customer</th><th class="tr">Amount</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="6" class="tc tm-" style="padding:20px;">No invoices yet. Click "New GST Invoice" to create one.</td></tr>'}</tbody>
+    </table>
+  </div>`;
+}
+
+function openNewInvoice(){
+  const invNo='INV-'+String(Date.now()).slice(-6);
+  const custOpts=state.debtors.map(d=>`<option value="${d.name}">${d.name}</option>`).join('');
+  const itemOpts=state.items.map(it=>`<option value="${it.name}" data-rate="${it.sellingPrice||0}" data-hsn="${it.hsn||''}" data-gst="${it.gst||18}">${it.name}</option>`).join('');
+  openModal('🧾 New GST Invoice',`
+    <div class="fg" style="margin-bottom:14px;">
+      <div class="fgr"><label class="fl">Invoice No</label><input class="fc" id="inv-no" value="${invNo}" readonly></div>
+      <div class="fgr"><label class="fl">Date</label><input class="fc" id="inv-date" type="date" value="${today()}"></div>
+      <div class="fgr"><label class="fl">Customer Name</label>
+        <input class="fc" id="inv-cust" list="inv-cust-list" placeholder="Customer name">
+        <datalist id="inv-cust-list">${custOpts}</datalist>
+      </div>
+      <div class="fgr"><label class="fl">Customer GSTIN</label><input class="fc" id="inv-cgstin" placeholder="Customer GSTIN (optional)"></div>
+    </div>
+    <div class="fgr" style="margin-bottom:10px;"><label class="fl">Customer Address</label><textarea class="fc" id="inv-caddr" rows="2" placeholder="Billing address"></textarea></div>
+    <div style="font-weight:700;font-size:11px;color:var(--tm);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Invoice Items</div>
+    <table class="et" id="inv-items-tbl" style="margin-bottom:10px;">
+      <thead><tr><th>#</th><th>Item / Description</th><th>HSN/SAC</th><th>Qty</th><th>Rate (₹)</th><th>GST%</th><th>Amount</th><th></th></tr></thead>
+      <tbody id="inv-items-body">
+        <tr id="inv-row-1">
+          <td>1</td>
+          <td><input class="fc" style="min-width:140px;" id="inv-item-1" list="inv-item-list-1" oninput="autoFillItem(1)" placeholder="Item name">
+          <datalist id="inv-item-list-1">${itemOpts}</datalist></td>
+          <td><input class="fc" style="width:80px;" id="inv-hsn-1" placeholder="HSN"></td>
+          <td><input class="fc" style="width:60px;" id="inv-qty-1" type="number" value="1" oninput="calcInvRow(1)"></td>
+          <td><input class="fc" style="width:90px;" id="inv-rate-1" type="number" value="0" oninput="calcInvRow(1)"></td>
+          <td><select class="fc" style="width:70px;" id="inv-gst-1" onchange="calcInvRow(1)"><option>0</option><option>5</option><option selected>18</option><option>12</option><option>28</option></select></td>
+          <td id="inv-amt-1" class="mono" style="text-align:right;">0.00</td>
+          <td></td>
+        </tr>
+      </tbody>
+      <tfoot><tr><td colspan="6" style="text-align:right;font-weight:700;padding:8px;">Total</td><td id="inv-total" class="mono" style="text-align:right;font-weight:700;padding:8px;">0.00</td><td></td></tr></tfoot>
+    </table>
+    <button class="btn btn-g btn-sm" onclick="addInvRow()">➕ Add Row</button>
+    <div class="fg" style="margin-top:14px;">
+      <div class="fgr"><label class="fl">Payment Terms</label>
+        <select class="fc" id="inv-terms"><option>Due on Receipt</option><option>Net 7</option><option>Net 15</option><option>Net 30</option><option>Net 45</option><option>Net 60</option></select>
+      </div>
+      <div class="fgr"><label class="fl">Notes</label><input class="fc" id="inv-notes" placeholder="Thank you for your business!"></div>
+    </div>
+    <div style="margin-top:16px;display:flex;gap:8px;">
+      <button class="btn btn-p" onclick="saveInvoice('draft')">💾 Save Draft</button>
+      <button class="btn btn-s" onclick="saveInvoice('sent')">📤 Save & Print</button>
+      <button class="btn btn-g" onclick="closeModal()">Cancel</button>
+    </div>
+  `);
+  window._invRowCount=1;
+}
+
+let _invRowCount=1;
+function addInvRow(){
+  _invRowCount++;
+  const n=_invRowCount;
+  const itemOpts=state.items.map(it=>`<option value="${it.name}" data-rate="${it.sellingPrice||0}" data-hsn="${it.hsn||''}" data-gst="${it.gst||18}">${it.name}</option>`).join('');
+  const tbody=document.getElementById('inv-items-body');
+  const tr=document.createElement('tr');
+  tr.id='inv-row-'+n;
+  tr.innerHTML=`<td>${n}</td>
+    <td><input class="fc" style="min-width:140px;" id="inv-item-${n}" list="inv-item-list-${n}" oninput="autoFillItem(${n})" placeholder="Item name">
+    <datalist id="inv-item-list-${n}">${itemOpts}</datalist></td>
+    <td><input class="fc" style="width:80px;" id="inv-hsn-${n}" placeholder="HSN"></td>
+    <td><input class="fc" style="width:60px;" id="inv-qty-${n}" type="number" value="1" oninput="calcInvRow(${n})"></td>
+    <td><input class="fc" style="width:90px;" id="inv-rate-${n}" type="number" value="0" oninput="calcInvRow(${n})"></td>
+    <td><select class="fc" style="width:70px;" id="inv-gst-${n}" onchange="calcInvRow(${n})"><option>0</option><option>5</option><option>12</option><option selected>18</option><option>28</option></select></td>
+    <td id="inv-amt-${n}" class="mono" style="text-align:right;">0.00</td>
+    <td><button class="btn btn-d btn-sm" onclick="document.getElementById('inv-row-${n}').remove();calcInvTotal()">✕</button></td>`;
+  tbody.appendChild(tr);
+}
+
+function autoFillItem(n){
+  const name=document.getElementById('inv-item-'+n)?.value;
+  const it=state.items.find(i=>i.name===name);
+  if(!it)return;
+  if(document.getElementById('inv-hsn-'+n)) document.getElementById('inv-hsn-'+n).value=it.hsn||'';
+  if(document.getElementById('inv-rate-'+n)) document.getElementById('inv-rate-'+n).value=it.sellingPrice||0;
+  const gstSel=document.getElementById('inv-gst-'+n);
+  if(gstSel){[...gstSel.options].forEach(o=>{if(Number(o.value)===Number(it.gst||18))o.selected=true;});}
+  calcInvRow(n);
+}
+
+function calcInvRow(n){
+  const qty=parseFloat(document.getElementById('inv-qty-'+n)?.value||0);
+  const rate=parseFloat(document.getElementById('inv-rate-'+n)?.value||0);
+  const gst=parseFloat(document.getElementById('inv-gst-'+n)?.value||0);
+  const amt=qty*rate*(1+gst/100);
+  const el=document.getElementById('inv-amt-'+n);
+  if(el)el.textContent=amt.toFixed(2);
+  calcInvTotal();
+}
+
+function calcInvTotal(){
+  let total=0;
+  const tbody=document.getElementById('inv-items-body');
+  if(!tbody)return;
+  [...tbody.rows].forEach(tr=>{
+    const id=tr.id?.replace('inv-row-','');
+    if(!id)return;
+    const el=document.getElementById('inv-amt-'+id);
+    total+=parseFloat(el?.textContent||0);
+  });
+  const tel=document.getElementById('inv-total');
+  if(tel)tel.textContent=total.toFixed(2);
+}
+
+function saveInvoice(status){
+  const no=document.getElementById('inv-no')?.value;
+  const date=document.getElementById('inv-date')?.value;
+  const cust=document.getElementById('inv-cust')?.value;
+  if(!cust){alert('Please enter customer name.');return;}
+  const items=[];
+  const tbody=document.getElementById('inv-items-body');
+  [...tbody.rows].forEach(tr=>{
+    const id=tr.id?.replace('inv-row-','');
+    if(!id)return;
+    const name=document.getElementById('inv-item-'+id)?.value||'';
+    if(!name)return;
+    items.push({
+      name,
+      hsn:document.getElementById('inv-hsn-'+id)?.value||'',
+      qty:parseFloat(document.getElementById('inv-qty-'+id)?.value||1),
+      rate:parseFloat(document.getElementById('inv-rate-'+id)?.value||0),
+      gst:parseFloat(document.getElementById('inv-gst-'+id)?.value||0),
+    });
+  });
+  if(!items.length){alert('Add at least one item.');return;}
+  const inv={
+    id:no, date, customer:cust,
+    customerGstin:document.getElementById('inv-cgstin')?.value||'',
+    customerAddr:document.getElementById('inv-caddr')?.value||'',
+    terms:document.getElementById('inv-terms')?.value||'Due on Receipt',
+    notes:document.getElementById('inv-notes')?.value||'',
+    items, status,
+    createdBy:currentUser?.username||'admin',
+    createdAt:new Date().toISOString(),
+  };
+  if(!state.invoices)state.invoices=[];
+  state.invoices.push(inv);
+  scheduleSave();
+  closeModal();
+  showToast('✅ Invoice saved!','#059669');
+  if(status==='sent')printInvoice(no);
+  pgInvoice();
+}
+
+function markInvPaid(id){
+  const inv=state.invoices.find(i=>i.id===id);
+  if(!inv)return;
+  inv.status='paid';
+  scheduleSave();
+  showToast('✅ Invoice marked as paid!','#059669');
+  pgInvoice();
+}
+
+function deleteInvoice(id){
+  if(!confirm('Delete this invoice?'))return;
+  state.invoices=state.invoices.filter(i=>i.id!==id);
+  scheduleSave();
+  pgInvoice();
+}
+
+function viewInvoice(id){
+  const inv=state.invoices.find(i=>i.id===id);
+  if(!inv)return;
+  const html=buildInvoiceHTML(inv);
+  openModal('Invoice Preview - '+id,`<div>${html}</div><div style="margin-top:14px;display:flex;gap:8px;"><button class="btn btn-p" onclick="printInvoice('${id}')">🖨 Print</button><button class="btn btn-g" onclick="closeModal()">Close</button></div>`);
+}
+
+function printInvoice(id){
+  const inv=state.invoices.find(i=>i.id===id);
+  if(!inv){showToast('Invoice not found','#dc2626');return;}
+  const html=buildInvoiceHTML(inv);
+  const w=window.open('','_blank','width=900,height=700');
+  w.document.write(`<!DOCTYPE html><html><head><title>Invoice ${inv.id}</title>
+  <style>
+    body{font-family:Arial,sans-serif;font-size:13px;color:#111;margin:0;padding:0;}
+    .inv-wrap{max-width:800px;margin:0 auto;padding:30px;}
+    .inv-header{display:flex;justify-content:space-between;border-bottom:3px solid #1d4ed8;padding-bottom:14px;margin-bottom:14px;}
+    .company-name{font-size:22px;font-weight:800;color:#1d4ed8;}
+    .inv-title{font-size:28px;font-weight:800;color:#1d4ed8;text-align:right;}
+    .inv-meta{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:16px;}
+    .inv-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;}
+    .inv-box-title{font-size:10px;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:6px;}
+    table{width:100%;border-collapse:collapse;margin-bottom:16px;}
+    th{background:#1d4ed8;color:#fff;padding:8px 10px;text-align:left;font-size:11px;}
+    td{padding:7px 10px;border-bottom:1px solid #e2e8f0;}
+    .tr{text-align:right;}.tc{text-align:center;}
+    .totals-box{margin-left:auto;width:300px;}
+    .tot-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #e2e8f0;}
+    .tot-final{display:flex;justify-content:space-between;padding:8px;background:#1d4ed8;color:#fff;font-weight:800;border-radius:6px;margin-top:6px;}
+    .footer{margin-top:30px;border-top:1px solid #e2e8f0;padding-top:12px;font-size:11px;color:#64748b;}
+    @media print{body{margin:0;}.no-print{display:none;}}
+  </style></head><body>${html}</body></html>`);
+  w.document.close();
+  setTimeout(()=>w.print(),600);
+}
+
+function buildInvoiceHTML(inv){
+  const subtotal=inv.items.reduce((s,it)=>s+(it.qty*it.rate),0);
+  let cgst=0,sgst=0,igst=0;
+  const isIntra=(inv.customerState===state.companyState||!inv.customerState);
+  inv.items.forEach(it=>{
+    const taxAmt=it.qty*it.rate*(it.gst/100);
+    if(isIntra){cgst+=taxAmt/2;sgst+=taxAmt/2;}else{igst+=taxAmt;}
+  });
+  const total=subtotal+cgst+sgst+igst;
+  const itemRows=inv.items.map((it,i)=>{
+    const taxable=it.qty*it.rate;
+    const taxAmt=taxable*(it.gst/100);
+    return `<tr>
+      <td class="tc">${i+1}</td>
+      <td>${it.name}</td>
+      <td class="tc">${it.hsn||'—'}</td>
+      <td class="tc">${it.qty}</td>
+      <td class="tr">₹${fmtN(it.rate)}</td>
+      <td class="tr">₹${fmtN(taxable)}</td>
+      <td class="tc">${it.gst}%</td>
+      <td class="tr">₹${fmtN(taxAmt)}</td>
+      <td class="tr">₹${fmtN(taxable+taxAmt)}</td>
+    </tr>`;
+  }).join('');
+
+  return `<div class="inv-wrap">
+    <div class="inv-header">
+      <div>
+        <div class="company-name">${state.company}</div>
+        ${state.gstin?`<div style="font-size:12px;color:#475569;margin-top:4px;">GSTIN: ${state.gstin}</div>`:''}
+        ${state.address?`<div style="font-size:12px;color:#475569;">${state.address}</div>`:''}
+        ${state.phone?`<div style="font-size:12px;color:#475569;">📞 ${state.phone}</div>`:''}
+      </div>
+      <div style="text-align:right;">
+        <div class="inv-title">TAX INVOICE</div>
+        <div style="font-size:13px;margin-top:4px;"><strong>#${inv.id}</strong></div>
+        <div style="font-size:12px;color:#475569;">Date: ${fmtD(inv.date)}</div>
+        <div style="font-size:12px;color:#475569;">Terms: ${inv.terms||'Due on Receipt'}</div>
+      </div>
+    </div>
+    <div class="inv-meta">
+      <div class="inv-box">
+        <div class="inv-box-title">Bill To</div>
+        <div style="font-weight:700;font-size:14px;">${inv.customer}</div>
+        ${inv.customerGstin?`<div style="font-size:12px;color:#475569;">GSTIN: ${inv.customerGstin}</div>`:''}
+        ${inv.customerAddr?`<div style="font-size:12px;color:#475569;">${inv.customerAddr}</div>`:''}
+      </div>
+      <div class="inv-box">
+        <div class="inv-box-title">Invoice Details</div>
+        <div><strong>Invoice No:</strong> ${inv.id}</div>
+        <div><strong>Date:</strong> ${fmtD(inv.date)}</div>
+        <div><strong>Financial Year:</strong> ${state.fy}</div>
+        <div><strong>Status:</strong> <span style="color:${inv.status==='paid'?'#059669':'#d97706'};font-weight:700;">${(inv.status||'draft').toUpperCase()}</span></div>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th class="tc">#</th><th>Item / Description</th><th class="tc">HSN/SAC</th><th class="tc">Qty</th><th class="tr">Rate</th><th class="tr">Taxable</th><th class="tc">GST%</th><th class="tr">Tax Amt</th><th class="tr">Total</th></tr></thead>
+      <tbody>${itemRows}</tbody>
+    </table>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px;">
+      <div style="flex:1;">
+        ${inv.notes?`<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px;font-size:12px;"><strong>Notes:</strong> ${inv.notes}</div>`:''}
+        ${state.gstin?`<div style="margin-top:10px;font-size:11px;color:#64748b;">Subject to ${state.companyState||'Maharashtra'} Jurisdiction</div>`:''}
+      </div>
+      <div class="totals-box">
+        <div class="tot-row"><span>Subtotal (Taxable)</span><span>₹${fmtN(subtotal)}</span></div>
+        ${cgst>0?`<div class="tot-row"><span>CGST</span><span>₹${fmtN(cgst)}</span></div><div class="tot-row"><span>SGST</span><span>₹${fmtN(sgst)}</span></div>`:''}
+        ${igst>0?`<div class="tot-row"><span>IGST</span><span>₹${fmtN(igst)}</span></div>`:''}
+        <div class="tot-final"><span>Grand Total</span><span>₹${fmtN(total)}</span></div>
+      </div>
+    </div>
+    <div class="footer">
+      <div style="display:flex;justify-content:space-between;">
+        <div>This is a computer-generated invoice.</div>
+        <div style="text-align:right;margin-top:40px;border-top:1px solid #e2e8f0;padding-top:6px;">Authorised Signatory<br><strong>${state.company}</strong></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  PAGE: EMPLOYEE MASTER
+// ══════════════════════════════════════════════════════════════════
+function pgEmployees(){
+  if(!state.employees)state.employees=[];
+  const rows=state.employees.map((e,i)=>`<tr class="${i%2?'alt':''}">
+    <td class="mono tb-">${e.id}</td>
+    <td><strong>${e.name}</strong></td>
+    <td>${e.designation||'—'}</td>
+    <td>${e.department||'—'}</td>
+    <td class="tr mono">${fmt(e.basicSalary||0)}</td>
+    <td class="tr mono">${fmt(e.grossSalary||0)}</td>
+    <td><span class="badge ${e.status==='active'?'bg-':'br'}">${e.status||'active'}</span></td>
+    <td>
+      <button class="btn btn-g btn-sm" onclick="editEmployee('${e.id}')">✏️ Edit</button>
+      <button class="btn btn-d btn-sm" onclick="deleteEmployee('${e.id}')">🗑</button>
+    </td>
+  </tr>`).join('');
+
+  eid('content').innerHTML=`
+  <div class="sg" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px;">
+    <div class="sc sc-b"><div class="sl">Total Employees</div><div class="sv">${state.employees.length}</div></div>
+    <div class="sc sc-g"><div class="sl">Active</div><div class="sv">${state.employees.filter(e=>e.status==='active').length}</div></div>
+    <div class="sc sc-o"><div class="sl">Monthly Payroll</div><div class="sv">${fmt(state.employees.filter(e=>e.status==='active').reduce((s,e)=>s+(e.grossSalary||0),0))}</div></div>
+    <div class="sc sc-p"><div class="sl">Departments</div><div class="sv">${[...new Set(state.employees.map(e=>e.department).filter(Boolean))].length}</div></div>
+  </div>
+  <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+    <button class="btn btn-p" onclick="openAddEmployee()">➕ Add Employee</button>
+  </div>
+  <div class="card">
+    <table class="tbl">
+      <thead><tr><th>Emp ID</th><th>Name</th><th>Designation</th><th>Department</th><th class="tr">Basic Salary</th><th class="tr">Gross Salary</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="8" class="tc tm-" style="padding:20px;">No employees. Add your first employee.</td></tr>'}</tbody>
+    </table>
+  </div>`;
+}
+
+function openAddEmployee(id){
+  const emp=id?state.employees.find(e=>e.id===id):{};
+  const isEdit=!!id;
+  const newId='EMP-'+String((state.employees.length||0)+1).padStart(3,'0');
+  openModal((isEdit?'✏️ Edit':'➕ Add')+' Employee',`
+    <div class="fg">
+      <div class="fgr"><label class="fl">Employee ID</label><input class="fc" id="emp-id" value="${isEdit?emp.id:newId}" ${isEdit?'readonly':''}></div>
+      <div class="fgr"><label class="fl">Full Name *</label><input class="fc" id="emp-name" value="${emp.name||''}" placeholder="Employee full name"></div>
+      <div class="fgr"><label class="fl">Designation</label><input class="fc" id="emp-desg" value="${emp.designation||''}" placeholder="e.g. Accountant"></div>
+      <div class="fgr"><label class="fl">Department</label><input class="fc" id="emp-dept" value="${emp.department||''}" placeholder="e.g. Accounts"></div>
+      <div class="fgr"><label class="fl">Date of Joining</label><input class="fc" id="emp-doj" type="date" value="${emp.doj||today()}"></div>
+      <div class="fgr"><label class="fl">Date of Birth</label><input class="fc" id="emp-dob" type="date" value="${emp.dob||''}"></div>
+      <div class="fgr"><label class="fl">PAN Number</label><input class="fc" id="emp-pan" value="${emp.pan||''}" placeholder="ABCDE1234F"></div>
+      <div class="fgr"><label class="fl">Aadhaar No</label><input class="fc" id="emp-aadh" value="${emp.aadhaar||''}" placeholder="XXXX-XXXX-XXXX"></div>
+      <div class="fgr"><label class="fl">Mobile</label><input class="fc" id="emp-mob" value="${emp.mobile||''}" placeholder="10-digit mobile"></div>
+      <div class="fgr"><label class="fl">Email</label><input class="fc" id="emp-email" value="${emp.email||''}" placeholder="employee@email.com"></div>
+      <div class="fgr"><label class="fl">Bank Account No</label><input class="fc" id="emp-bank" value="${emp.bankAccNo||''}" placeholder="Account number"></div>
+      <div class="fgr"><label class="fl">IFSC Code</label><input class="fc" id="emp-ifsc" value="${emp.ifsc||''}" placeholder="IFSC code"></div>
+    </div>
+    <div style="background:#f8fafc;border-radius:8px;padding:14px;margin-top:12px;">
+      <div style="font-weight:700;font-size:11px;color:var(--tm);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">💰 Salary Structure</div>
+      <div class="fg">
+        <div class="fgr"><label class="fl">Basic Salary (₹)</label><input class="fc" id="emp-basic" type="number" value="${emp.basicSalary||0}" oninput="calcEmpSalary()"></div>
+        <div class="fgr"><label class="fl">HRA (₹)</label><input class="fc" id="emp-hra" type="number" value="${emp.hra||0}" oninput="calcEmpSalary()"></div>
+        <div class="fgr"><label class="fl">DA (₹)</label><input class="fc" id="emp-da" type="number" value="${emp.da||0}" oninput="calcEmpSalary()"></div>
+        <div class="fgr"><label class="fl">Other Allowances (₹)</label><input class="fc" id="emp-other" type="number" value="${emp.otherAllow||0}" oninput="calcEmpSalary()"></div>
+        <div class="fgr"><label class="fl">PF Deduction (₹)</label><input class="fc" id="emp-pf" type="number" value="${emp.pf||0}" oninput="calcEmpSalary()"></div>
+        <div class="fgr"><label class="fl">PT / Prof Tax (₹)</label><input class="fc" id="emp-pt" type="number" value="${emp.pt||0}" oninput="calcEmpSalary()"></div>
+        <div class="fgr"><label class="fl">TDS (₹/month)</label><input class="fc" id="emp-tds" type="number" value="${emp.tds||0}" oninput="calcEmpSalary()"></div>
+        <div class="fgr"><label class="fl">Gross Salary (Auto)</label><input class="fc" id="emp-gross" readonly style="background:#e8f5e9;font-weight:700;color:#059669;" value="${emp.grossSalary||0}"></div>
+        <div class="fgr"><label class="fl">Net Salary (Auto)</label><input class="fc" id="emp-net" readonly style="background:#e3f2fd;font-weight:700;color:#1d4ed8;" value="${emp.netSalary||0}"></div>
+        <div class="fgr"><label class="fl">Status</label>
+          <select class="fc" id="emp-status">
+            <option value="active" ${(emp.status||'active')==='active'?'selected':''}>Active</option>
+            <option value="inactive" ${emp.status==='inactive'?'selected':''}>Inactive</option>
+            <option value="resigned" ${emp.status==='resigned'?'selected':''}>Resigned</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:16px;display:flex;gap:8px;">
+      <button class="btn btn-p" onclick="saveEmployee('${isEdit?id:''}')">💾 Save Employee</button>
+      <button class="btn btn-g" onclick="closeModal()">Cancel</button>
+    </div>
+  `);
+}
+
+function calcEmpSalary(){
+  const basic=parseFloat(document.getElementById('emp-basic')?.value||0);
+  const hra=parseFloat(document.getElementById('emp-hra')?.value||0);
+  const da=parseFloat(document.getElementById('emp-da')?.value||0);
+  const other=parseFloat(document.getElementById('emp-other')?.value||0);
+  const pf=parseFloat(document.getElementById('emp-pf')?.value||0);
+  const pt=parseFloat(document.getElementById('emp-pt')?.value||0);
+  const tds=parseFloat(document.getElementById('emp-tds')?.value||0);
+  const gross=basic+hra+da+other;
+  const net=gross-pf-pt-tds;
+  const gEl=document.getElementById('emp-gross');const nEl=document.getElementById('emp-net');
+  if(gEl)gEl.value=gross.toFixed(2);
+  if(nEl)nEl.value=net.toFixed(2);
+}
+
+function saveEmployee(editId){
+  const name=document.getElementById('emp-name')?.value.trim();
+  if(!name){alert('Employee name required.');return;}
+  const emp={
+    id:document.getElementById('emp-id')?.value.trim(),
+    name,
+    designation:document.getElementById('emp-desg')?.value.trim(),
+    department:document.getElementById('emp-dept')?.value.trim(),
+    doj:document.getElementById('emp-doj')?.value,
+    dob:document.getElementById('emp-dob')?.value,
+    pan:document.getElementById('emp-pan')?.value.trim().toUpperCase(),
+    aadhaar:document.getElementById('emp-aadh')?.value.trim(),
+    mobile:document.getElementById('emp-mob')?.value.trim(),
+    email:document.getElementById('emp-email')?.value.trim(),
+    bankAccNo:document.getElementById('emp-bank')?.value.trim(),
+    ifsc:document.getElementById('emp-ifsc')?.value.trim().toUpperCase(),
+    basicSalary:parseFloat(document.getElementById('emp-basic')?.value||0),
+    hra:parseFloat(document.getElementById('emp-hra')?.value||0),
+    da:parseFloat(document.getElementById('emp-da')?.value||0),
+    otherAllow:parseFloat(document.getElementById('emp-other')?.value||0),
+    pf:parseFloat(document.getElementById('emp-pf')?.value||0),
+    pt:parseFloat(document.getElementById('emp-pt')?.value||0),
+    tds:parseFloat(document.getElementById('emp-tds')?.value||0),
+    grossSalary:parseFloat(document.getElementById('emp-gross')?.value||0),
+    netSalary:parseFloat(document.getElementById('emp-net')?.value||0),
+    status:document.getElementById('emp-status')?.value||'active',
+  };
+  if(!state.employees)state.employees=[];
+  if(editId){const idx=state.employees.findIndex(e=>e.id===editId);if(idx>=0)state.employees[idx]=emp;else state.employees.push(emp);}
+  else state.employees.push(emp);
+  scheduleSave();
+  closeModal();
+  showToast('✅ Employee saved!','#059669');
+  pgEmployees();
+}
+
+function editEmployee(id){openAddEmployee(id);}
+function deleteEmployee(id){
+  if(!confirm('Delete this employee record?'))return;
+  state.employees=state.employees.filter(e=>e.id!==id);
+  scheduleSave();pgEmployees();
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  PAGE: PAYROLL PROCESSING
+// ══════════════════════════════════════════════════════════════════
+function pgPayroll(){
+  if(!state.payroll)state.payroll=[];
+  if(!state.employees)state.employees=[];
+  const months=[];
+  const now=new Date();
+  for(let i=0;i<6;i++){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push({val:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,lbl:d.toLocaleString('en-IN',{month:'long',year:'numeric'})});}
+
+  const recentPayrolls=[...state.payroll].sort((a,b)=>b.month.localeCompare(a.month)).slice(0,6);
+  const prRows=recentPayrolls.map((pr,i)=>`<tr class="${i%2?'alt':''}">
+    <td>${pr.monthLabel||pr.month}</td>
+    <td class="tc">${pr.entries?.length||0} employees</td>
+    <td class="tr mono">${fmt(pr.entries?.reduce((s,e)=>s+(e.grossSalary||0),0)||0)}</td>
+    <td class="tr mono">${fmt(pr.entries?.reduce((s,e)=>s+(e.totalDeductions||0),0)||0)}</td>
+    <td class="tr mono">${fmt(pr.entries?.reduce((s,e)=>s+(e.netSalary||0),0)||0)}</td>
+    <td>
+      <button class="btn btn-g btn-sm" onclick="viewPayroll('${pr.month}')">👁 View</button>
+      <button class="btn btn-p btn-sm" onclick="printPayroll('${pr.month}')">🖨 Print</button>
+    </td>
+  </tr>`).join('');
+
+  const monthOpts=months.map(m=>`<option value="${m.val}">${m.lbl}</option>`).join('');
+
+  eid('content').innerHTML=`
+  <div class="sg" style="grid-template-columns:repeat(3,1fr);margin-bottom:18px;">
+    <div class="sc sc-b"><div class="sl">Active Employees</div><div class="sv">${state.employees.filter(e=>e.status==='active').length}</div></div>
+    <div class="sc sc-g"><div class="sl">Monthly Payroll</div><div class="sv">${fmt(state.employees.filter(e=>e.status==='active').reduce((s,e)=>s+(e.netSalary||0),0))}</div><div class="ss">Estimated net</div></div>
+    <div class="sc sc-p"><div class="sl">Payrolls Processed</div><div class="sv">${state.payroll.length}</div></div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px;">
+    <div class="ch">⚡ Process New Payroll</div>
+    <div style="padding:16px;display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;">
+      <div class="fgr"><label class="fl">Select Month</label>
+        <select class="fc si" id="pr-month">${monthOpts}</select>
+      </div>
+      <button class="btn btn-p" onclick="processPayroll()">⚙️ Generate Payroll</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ch">📋 Payroll History</div>
+    <table class="tbl">
+      <thead><tr><th>Month</th><th class="tc">Employees</th><th class="tr">Gross Payroll</th><th class="tr">Deductions</th><th class="tr">Net Payroll</th><th>Actions</th></tr></thead>
+      <tbody>${prRows||'<tr><td colspan="6" class="tc tm-" style="padding:20px;">No payroll processed yet.</td></tr>'}</tbody>
+    </table>
+  </div>`;
+}
+
+function processPayroll(){
+  const month=document.getElementById('pr-month')?.value;
+  if(!month){alert('Select a month.');return;}
+  if(!state.employees||!state.employees.length){alert('No employees found. Add employees first from Employee Master.');return;}
+  const exists=state.payroll.find(p=>p.month===month);
+  if(exists){if(!confirm('Payroll for this month already exists. Overwrite?'))return;state.payroll=state.payroll.filter(p=>p.month!==month);}
+  const active=state.employees.filter(e=>e.status==='active');
+  const d=new Date(month+'-01');
+  const daysInMonth=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+  const entries=active.map(emp=>({
+    empId:emp.id,
+    empName:emp.name,
+    designation:emp.designation||'',
+    department:emp.department||'',
+    basicSalary:emp.basicSalary||0,
+    hra:emp.hra||0,
+    da:emp.da||0,
+    otherAllow:emp.otherAllow||0,
+    grossSalary:emp.grossSalary||0,
+    pf:emp.pf||0,
+    pt:emp.pt||0,
+    tds:emp.tds||0,
+    totalDeductions:(emp.pf||0)+(emp.pt||0)+(emp.tds||0),
+    netSalary:emp.netSalary||0,
+    daysWorked:daysInMonth,
+    daysInMonth,
+    lopDays:0,
+    bankAccNo:emp.bankAccNo||'',
+    ifsc:emp.ifsc||'',
+  }));
+  const d2=new Date(month+'-01');
+  const monthLabel=d2.toLocaleString('en-IN',{month:'long',year:'numeric'});
+  state.payroll.push({month,monthLabel,entries,processedBy:currentUser?.username||'admin',processedAt:new Date().toISOString()});
+  scheduleSave();
+  showToast('✅ Payroll for '+monthLabel+' processed!','#059669');
+  pgPayroll();
+}
+
+function viewPayroll(month){
+  const pr=state.payroll.find(p=>p.month===month);
+  if(!pr)return;
+  const rows=pr.entries.map((e,i)=>`<tr class="${i%2?'alt':''}">
+    <td class="mono">${e.empId}</td><td>${e.empName}</td><td>${e.designation}</td>
+    <td class="tr mono">${fmt(e.basicSalary)}</td>
+    <td class="tr mono">${fmt(e.grossSalary)}</td>
+    <td class="tr mono" style="color:#dc2626;">${fmt(e.totalDeductions)}</td>
+    <td class="tr mono" style="color:#059669;font-weight:700;">${fmt(e.netSalary)}</td>
+    <td><button class="btn btn-g btn-sm" onclick="closeModal();printPayslip('${month}','${e.empId}')">🖨 Payslip</button></td>
+  </tr>`).join('');
+  const totalGross=pr.entries.reduce((s,e)=>s+(e.grossSalary||0),0);
+  const totalDed=pr.entries.reduce((s,e)=>s+(e.totalDeductions||0),0);
+  const totalNet=pr.entries.reduce((s,e)=>s+(e.netSalary||0),0);
+  openModal('📋 Payroll — '+pr.monthLabel,`
+    <div style="overflow-x:auto;">
+    <table class="tbl">
+      <thead><tr><th>Emp ID</th><th>Name</th><th>Designation</th><th class="tr">Basic</th><th class="tr">Gross</th><th class="tr">Deductions</th><th class="tr">Net Salary</th><th>Payslip</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot class="tf"><tr><td colspan="4" class="tr">Totals</td><td class="tr">${fmt(totalGross)}</td><td class="tr">${fmt(totalDed)}</td><td class="tr">${fmt(totalNet)}</td><td></td></tr></tfoot>
+    </table>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px;">
+      <button class="btn btn-p" onclick="closeModal();printPayroll('${month}')">🖨 Print All Payslips</button>
+      <button class="btn btn-g" onclick="closeModal()">Close</button>
+    </div>`);
+}
+
+function printPayslip(month,empId){
+  const pr=state.payroll.find(p=>p.month===month);
+  if(!pr)return;
+  const e=pr.entries.find(x=>x.empId===empId);
+  if(!e)return;
+  const w=window.open('','_blank','width=800,height=600');
+  w.document.write(`<!DOCTYPE html><html><head><title>Payslip</title><style>
+    body{font-family:Arial,sans-serif;font-size:13px;margin:0;padding:20px;}
+    .hdr{background:#1d4ed8;color:#fff;padding:16px 20px;border-radius:8px 8px 0 0;display:flex;justify-content:space-between;}
+    .box{border:1px solid #e2e8f0;border-radius:0 0 8px 8px;padding:16px;}
+    .row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #f1f5f9;}
+    .sec{font-weight:700;font-size:11px;text-transform:uppercase;color:#64748b;margin:12px 0 6px;}
+    .earn-ded{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:10px;}
+    .totrow{background:#f8fafc;font-weight:700;padding:8px;border-radius:4px;display:flex;justify-content:space-between;margin-top:6px;}
+    .netbox{background:#1d4ed8;color:#fff;padding:12px 16px;border-radius:8px;display:flex;justify-content:space-between;font-size:16px;font-weight:800;margin-top:12px;}
+    @media print{body{padding:10px;}}
+  </style></head><body>
+  <div class="hdr">
+    <div><div style="font-size:18px;font-weight:800;">${state.company}</div><div style="opacity:.8;font-size:12px;">PAYSLIP</div></div>
+    <div style="text-align:right;"><div>${pr.monthLabel}</div><div style="opacity:.8;font-size:12px;">Pay Period</div></div>
+  </div>
+  <div class="box">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #e2e8f0;">
+      <div><div class="sec">Employee Details</div>
+        <div class="row"><span>Name</span><strong>${e.empName}</strong></div>
+        <div class="row"><span>Employee ID</span><span>${e.empId}</span></div>
+        <div class="row"><span>Designation</span><span>${e.designation||'—'}</span></div>
+        <div class="row"><span>Department</span><span>${e.department||'—'}</span></div>
+      </div>
+      <div><div class="sec">Payment Details</div>
+        <div class="row"><span>Days Worked</span><span>${e.daysWorked}/${e.daysInMonth}</span></div>
+        <div class="row"><span>Bank Account</span><span>${e.bankAccNo||'—'}</span></div>
+        <div class="row"><span>IFSC</span><span>${e.ifsc||'—'}</span></div>
+        <div class="row"><span>Payment Mode</span><span>Bank Transfer</span></div>
+      </div>
+    </div>
+    <div class="earn-ded">
+      <div><div class="sec">💚 Earnings</div>
+        <div class="row"><span>Basic Salary</span><span>₹${fmtN(e.basicSalary)}</span></div>
+        ${e.hra?`<div class="row"><span>HRA</span><span>₹${fmtN(e.hra)}</span></div>`:''}
+        ${e.da?`<div class="row"><span>DA</span><span>₹${fmtN(e.da)}</span></div>`:''}
+        ${e.otherAllow?`<div class="row"><span>Other Allowances</span><span>₹${fmtN(e.otherAllow)}</span></div>`:''}
+        <div class="totrow"><span>Gross Earnings</span><span>₹${fmtN(e.grossSalary)}</span></div>
+      </div>
+      <div><div class="sec">❌ Deductions</div>
+        ${e.pf?`<div class="row"><span>Provident Fund (PF)</span><span>₹${fmtN(e.pf)}</span></div>`:''}
+        ${e.pt?`<div class="row"><span>Professional Tax</span><span>₹${fmtN(e.pt)}</span></div>`:''}
+        ${e.tds?`<div class="row"><span>TDS (Income Tax)</span><span>₹${fmtN(e.tds)}</span></div>`:''}
+        <div class="totrow"><span>Total Deductions</span><span>₹${fmtN(e.totalDeductions)}</span></div>
+      </div>
+    </div>
+    <div class="netbox"><span>NET TAKE HOME SALARY</span><span>₹${fmtN(e.netSalary)}</span></div>
+    <div style="margin-top:16px;font-size:11px;color:#64748b;text-align:center;">This is a computer-generated payslip. No signature required.</div>
+  </div>
+  </body></html>`);
+  w.document.close();
+  setTimeout(()=>w.print(),600);
+}
+
+function printPayroll(month){
+  const pr=state.payroll.find(p=>p.month===month);
+  if(!pr)return;
+  pr.entries.forEach(e=>printPayslip(month,e.empId));
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  PAGE: USER MANAGEMENT (Multi-User)
+// ══════════════════════════════════════════════════════════════════
+const ROLES={
+  admin:{label:'Admin',desc:'Full access to everything',color:'#7c3aed'},
+  accountant:{label:'Accountant',desc:'Can enter vouchers and view reports',color:'#1d4ed8'},
+  viewer:{label:'Viewer',desc:'Read-only access to reports',color:'#059669'},
+};
+
+function pgUserMgmt(){
+  if(currentUser?.role!=='admin'){
+    eid('content').innerHTML=`<div class="al al-d">⛔ Access Denied. Only Admin can manage users.</div>`;
+    return;
+  }
+  if(!state.appUsers)state.appUsers=[];
+  const rows=state.appUsers.map((u,i)=>{
+    const roleInfo=ROLES[u.role]||{label:u.role,color:'#64748b'};
+    const isYou=u.username===currentUser?.username;
+    return `<tr class="${i%2?'alt':''}">
+      <td><strong>${u.username}</strong>${isYou?'<span class="badge bb" style="margin-left:6px;">You</span>':''}</td>
+      <td><span class="badge" style="background:${roleInfo.color}20;color:${roleInfo.color};">${roleInfo.label}</span></td>
+      <td class="tm-" style="font-size:11px;">${roleInfo.desc}</td>
+      <td class="tm-" style="font-size:11px;">${u.createdAt?fmtD(u.createdAt.slice(0,10)):'—'}</td>
+      <td>
+        ${!isYou?`<button class="btn btn-g btn-sm" onclick="editAppUser('${u.username}')">✏️ Edit</button>
+        <button class="btn btn-d btn-sm" onclick="deleteAppUser('${u.username}')">🗑 Delete</button>`:'<span class="tm-" style="font-size:11px;">Current user</span>'}
+      </td>
+    </tr>`;
+  }).join('');
+
+  eid('content').innerHTML=`
+  <div class="al al-i" style="margin-bottom:16px;">ℹ️ User Management allows you to add multiple users with different roles. Each user logs in with their own username and password and sees the same company data.</div>
+  <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+    <button class="btn btn-p" onclick="openAddUser()">➕ Add New User</button>
+  </div>
+  <div class="card">
+    <div class="ch">👥 System Users</div>
+    <table class="tbl">
+      <thead><tr><th>Username</th><th>Role</th><th>Permissions</th><th>Added On</th><th>Actions</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="5" class="tc tm-" style="padding:20px;">No users found.</td></tr>'}</tbody>
+    </table>
+  </div>
+  <div style="margin-top:16px;" class="card">
+    <div class="ch">🔐 Role Permissions Reference</div>
+    <div style="padding:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+      ${Object.entries(ROLES).map(([k,v])=>`
+        <div style="border:1.5px solid ${v.color}30;border-radius:10px;padding:14px;">
+          <div style="font-weight:700;color:${v.color};font-size:13px;">👤 ${v.label}</div>
+          <div style="font-size:11px;color:#475569;margin-top:4px;">${v.desc}</div>
+          <div style="margin-top:8px;font-size:11px;">
+            ${k==='admin'?'✅ All modules<br>✅ User Management<br>✅ Settings<br>✅ Delete data':
+              k==='accountant'?'✅ Voucher entry<br>✅ All reports<br>✅ Invoice & Payroll<br>❌ User Management':
+              '✅ View reports<br>✅ View invoices<br>❌ Add/Edit data<br>❌ User Management'}
+          </div>
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function openAddUser(editUsername){
+  const u=editUsername?state.appUsers.find(x=>x.username===editUsername):{};
+  const isEdit=!!editUsername;
+  openModal((isEdit?'✏️ Edit':'➕ Add New')+' User',`
+    <div class="al al-w" style="margin-bottom:14px;">⚠️ Share login credentials securely. Each user will log in with their username and password.</div>
+    <div class="fg">
+      <div class="fgr"><label class="fl">Username *</label>
+        <input class="fc" id="nu-user" value="${u.username||''}" placeholder="e.g. accountant1" ${isEdit?'readonly':''}></div>
+      <div class="fgr"><label class="fl">${isEdit?'New Password (leave blank to keep)':'Password *'}</label>
+        <input class="fc" id="nu-pass" type="password" placeholder="${isEdit?'Leave blank to keep current':'Minimum 4 characters'}"></div>
+      <div class="fgr"><label class="fl">Role *</label>
+        <select class="fc" id="nu-role">
+          <option value="admin" ${(u.role||'')==='admin'?'selected':''}>👑 Admin — Full access</option>
+          <option value="accountant" ${(u.role||'')==='accountant'?'selected':''}>📊 Accountant — Enter & View</option>
+          <option value="viewer" ${(u.role||'')==='viewer'?'selected':''}>👁 Viewer — Read only</option>
+        </select>
+      </div>
+      <div class="fgr"><label class="fl">Full Name</label>
+        <input class="fc" id="nu-name" value="${u.fullName||''}" placeholder="User's full name"></div>
+    </div>
+    <div style="margin-top:16px;display:flex;gap:8px;">
+      <button class="btn btn-p" onclick="saveAppUser('${isEdit?editUsername:''}')">💾 Save User</button>
+      <button class="btn btn-g" onclick="closeModal()">Cancel</button>
+    </div>
+  `);
+}
+
+async function saveAppUser(editUsername){
+  const username=document.getElementById('nu-user')?.value.trim();
+  const pass=document.getElementById('nu-pass')?.value;
+  const role=document.getElementById('nu-role')?.value;
+  const fullName=document.getElementById('nu-name')?.value.trim();
+  if(!username){alert('Username required.');return;}
+  if(!editUsername&&!pass){alert('Password required for new user.');return;}
+  if(pass&&pass.length<4){alert('Password must be at least 4 characters.');return;}
+  if(!role){alert('Select a role.');return;}
+  if(!editUsername&&state.appUsers.find(u=>u.username===username)){alert('Username already exists.');return;}
+  if(!state.appUsers)state.appUsers=[];
+  if(editUsername){
+    const idx=state.appUsers.findIndex(u=>u.username===editUsername);
+    if(idx>=0){
+      state.appUsers[idx].role=role;
+      state.appUsers[idx].fullName=fullName;
+      if(pass){const h=await sha256(pass);state.appUsers[idx].passwordHash=h;await DB.set('users',username,{username,passwordHash:h,role,fullName});}
+    }
+  } else {
+    const h=await sha256(pass);
+    const newUser={username,passwordHash:h,role,fullName,createdAt:new Date().toISOString(),createdBy:currentUser?.username};
+    state.appUsers.push(newUser);
+    await DB.set('users',username,{username,passwordHash:h,role,fullName});
+  }
+  scheduleSave();
+  closeModal();
+  showToast('✅ User '+(editUsername?'updated':'created')+' successfully!','#059669');
+  pgUserMgmt();
+}
+
+function editAppUser(username){openAddUser(username);}
+async function deleteAppUser(username){
+  if(!confirm('Delete user "'+username+'"? They will no longer be able to log in.'))return;
+  state.appUsers=state.appUsers.filter(u=>u.username!==username);
+  await DB.del('users',username);
+  scheduleSave();
+  showToast('🗑 User deleted.','#dc2626');
+  pgUserMgmt();
+}
+
 //  INIT
 // ══════════════════════════════════════════════════════════════════
 async function init(){
@@ -3350,7 +4168,9 @@ async function init(){
           currentUser=user;
           document.getElementById('login-wrap').classList.add('hidden');
           document.getElementById('app').classList.remove('hidden');
-          document.getElementById('usr-btn').textContent=`👤 ${user.username} ▾`;
+          const roleLabel=user.role==='admin'?'👑':user.role==='accountant'?'📊':'👁';
+          document.getElementById('usr-btn').textContent=`${roleLabel} ${user.username} ▾`;
+          if(typeof applyRoleRestrictions==='function') applyRoleRestrictions(user.role);
         }
       }
     }
