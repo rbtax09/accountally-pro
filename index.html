@@ -3,8 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AccounTally Pro</title>
+<title>Grey Wolf Capital</title>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap');
 :root{--bg:#f0f2f5;--sidebar:#0f172a;--primary:#2563eb;--pd:#1d4ed8;--ok:#059669;--bad:#dc2626;--warn:#d97706;--sur:#fff;--bdr:#e2e8f0;--txt:#1e293b;--tm:#64748b;--tl:#94a3b8;--mono:'IBM Plex Mono',monospace;--font:'IBM Plex Sans',sans-serif;}
@@ -201,11 +203,11 @@ input[type=number]{-moz-appearance:textfield;}
 
 <!-- ══ LOGIN ══ -->
 <div id="login-wrap">
-  <div class="db-badge">🔐 IndexedDB Permanent Storage — Data never lost</div>
+  <div class="db-badge">☁️ Supabase Cloud Storage — Data saved permanently online</div>
   <div class="login-box">
     <div class="login-logo">
       <div class="login-logo-icon">📊</div>
-      <div class="login-logo-name">AccounTally Pro</div>
+      <div class="login-logo-name">Grey Wolf Capital</div>
       <div class="login-logo-sub">Professional Accounting Software</div>
     </div>
     <div class="login-error" id="login-err"></div>
@@ -391,42 +393,42 @@ const DEFAULT_STATE = {
 };
 
 // ══ DB ══
+// ══ SUPABASE CLIENT ══
+const SUPA_URL = 'https://dfsltxehfdmnwxkwecww.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRmc2x0eGVoZmRtbnd4a3dlY3d3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NTg0MDgsImV4cCI6MjA4NzQzNDQwOH0.Xe8JTV2Gw1WfCx-0U4im64dZ8aw_wYWhrFqciDrX990';
+const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
+
 const DB = {
-  _db:null,
-  open(){
-    return new Promise((res,rej)=>{
-      const r=indexedDB.open('accountally_pro_v4',1);
-      r.onupgradeneeded=e=>{
-        const db=e.target.result;
-        ['data','users'].forEach(s=>{ if(!db.objectStoreNames.contains(s)) db.createObjectStore(s); });
-      };
-      r.onsuccess=e=>{this._db=e.target.result;res();};
-      r.onerror=()=>rej(r.error);
-    });
+  async open(){ return true; }, // Supabase needs no local open
+  async get(store, key){
+    const tbl = store==='users' ? 'app_users' : 'app_data';
+    const col = store==='users' ? 'username' : 'id';
+    const {data,error} = await supa.from(tbl).select('*').eq(col,key).maybeSingle();
+    if(error) throw error;
+    if(!data) return undefined;
+    return store==='users' ? data : data.state;
   },
-  get(store,key){
-    return new Promise((res,rej)=>{
-      const r=this._db.transaction(store,'readonly').objectStore(store).get(key);
-      r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);
-    });
+  async set(store, key, val){
+    const tbl = store==='users' ? 'app_users' : 'app_data';
+    if(store==='users'){
+      const {error} = await supa.from(tbl).upsert({username:key,...val},{onConflict:'username'});
+      if(error) throw error;
+    } else {
+      const {error} = await supa.from(tbl).upsert({id:key, state:val},{onConflict:'id'});
+      if(error) throw error;
+    }
   },
-  set(store,key,val){
-    return new Promise((res,rej)=>{
-      const r=this._db.transaction(store,'readwrite').objectStore(store).put(val,key);
-      r.onsuccess=()=>res(); r.onerror=()=>rej(r.error);
-    });
+  async getAll(store){
+    const tbl = store==='users' ? 'app_users' : 'app_data';
+    const {data,error} = await supa.from(tbl).select('*');
+    if(error) throw error;
+    return data||[];
   },
-  getAll(store){
-    return new Promise((res,rej)=>{
-      const r=this._db.transaction(store,'readonly').objectStore(store).getAll();
-      r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);
-    });
-  },
-  del(store,key){
-    return new Promise((res,rej)=>{
-      const r=this._db.transaction(store,'readwrite').objectStore(store).delete(key);
-      r.onsuccess=()=>res(); r.onerror=()=>rej(r.error);
-    });
+  async del(store, key){
+    const tbl = store==='users' ? 'app_users' : 'app_data';
+    const col = store==='users' ? 'username' : 'id';
+    const {error} = await supa.from(tbl).delete().eq(col,key);
+    if(error) throw error;
   }
 };
 
@@ -522,7 +524,7 @@ function scheduleSave(){
 function setSaveInd(s){
   const el=document.getElementById('save-ind');
   if(!el)return;
-  if(s==='ok'){el.className='save-status save-ok';el.textContent='✓ Saved to IndexedDB';}
+  if(s==='ok'){el.className='save-status save-ok';el.textContent='✓ Saved to Cloud';}
   else if(s==='saving'){el.className='save-status save-ing';el.textContent='⏳ Saving...';}
   else{el.className='save-status';el.textContent='⚠ Save error';}
 }
@@ -592,6 +594,7 @@ const PTITLES={dashboard:'🏠 Dashboard',accounts:'📋 Chart of Accounts',item
   'reg-journal':'📓 Journal Register'};
 
 function navigate(page){
+  if(typeof destroyDashCharts==='function') destroyDashCharts();
   document.querySelectorAll('.ni').forEach(el=>el.classList.remove('act'));
   const n=document.getElementById('nav-'+page);
   if(n)n.classList.add('act');
@@ -642,8 +645,15 @@ function exportMultiXLS(sheets,file){
 //  PAGE: DASHBOARD
 // ══════════════════════════════════════════════════════════════════
 let dashFilter='monthly';
+let _dashCharts={};
+
+function destroyDashCharts(){
+  Object.values(_dashCharts).forEach(c=>{try{c.destroy();}catch(e){}});
+  _dashCharts={};
+}
 
 function pgDashboard(){
+  destroyDashCharts();
   const L=computeLedger();
   const totAssets=Object.values(L).filter(a=>a.type==='Asset').reduce((s,a)=>s+a.closingDr,0);
   const totLiab=Object.values(L).filter(a=>a.type==='Liability').reduce((s,a)=>s+a.closingCr,0);
@@ -651,110 +661,296 @@ function pgDashboard(){
   const totExp=Object.values(L).filter(a=>a.type==='Expense').reduce((s,a)=>s+a.closingDr,0);
   const netP=totInc-totExp;
   const cash=Object.values(L).filter(a=>a.group==='Cash & Bank').reduce((s,a)=>s+a.closingDr-a.closingCr,0);
+  const totVouchers=state.vouchers.length;
+  const gstLiab=Object.values(L).filter(a=>['Output CGST','Output SGST','Output IGST'].some(g=>a.name.includes(g))).reduce((s,a)=>s+a.closingCr,0);
+  const gstCredit=Object.values(L).filter(a=>['Input CGST','Input SGST','Input IGST'].some(g=>a.name.includes(g))).reduce((s,a)=>s+a.closingDr,0);
+  const netGst=gstLiab-gstCredit;
 
-  const recent=[...state.vouchers].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,6).map((v,i)=>{
+  const recent=[...state.vouchers].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8).map((v,i)=>{
     const amt=v.entries.reduce((s,e)=>s+(e.dr||0),0);
     return `<tr class="${i%2?'alt':''}">
-      <td class="mono tb-">${v.id}</td><td>${fmtD(v.date)}</td>
+      <td class="mono tb-" style="font-size:11px;">${v.id}</td><td style="font-size:11px;">${fmtD(v.date)}</td>
       <td><span class="badge ${bcol(v.type)}">${v.type}</span></td>
-      <td class="tm-" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${v.narration}</td>
-      <td class="tr">${fmt(amt)}</td>
+      <td class="tm-" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;">${v.narration||'—'}</td>
+      <td class="tr mono" style="font-size:11px;">${fmt(amt)}</td>
     </tr>`;
   }).join('');
 
   const recv=getReceivables(); const pay=getPayables();
 
+  // Build time-series data for charts
+  const {labels:tLabels,income:tIncome,expense:tExpense}=buildTimeSeriesData();
+
+  // Expense breakdown by group
+  const expGroups={};
+  Object.values(L).filter(a=>a.type==='Expense'&&a.closingDr>0).forEach(a=>{
+    expGroups[a.group]=(expGroups[a.group]||0)+a.closingDr;
+  });
+  const expLabels=Object.keys(expGroups);
+  const expVals=Object.values(expGroups);
+
+  // Income breakdown
+  const incGroups={};
+  Object.values(L).filter(a=>a.type==='Income'&&a.closingCr>0).forEach(a=>{
+    incGroups[a.group]=(incGroups[a.group]||0)+a.closingCr;
+  });
+  const incLabels=Object.keys(incGroups);
+  const incVals=Object.values(incGroups);
+
+  // Cash flow trend (monthly net)
+  const cfData=[];
+  const cfLabels=[];
+  for(let i=5;i>=0;i--){
+    const d=new Date(new Date().getFullYear(),new Date().getMonth()-i,1);
+    const yr=d.getFullYear(),mo=String(d.getMonth()+1).padStart(2,'0');
+    cfLabels.push(d.toLocaleString('en-IN',{month:'short'})+"'"+String(yr).slice(2));
+    const s=state.vouchers.filter(v=>v.date.startsWith(`${yr}-${mo}`)&&v.type==='Receipt').reduce((ss,v)=>ss+v.entries.reduce((x,e)=>x+(e.dr||0),0),0);
+    const e=state.vouchers.filter(v=>v.date.startsWith(`${yr}-${mo}`)&&v.type==='Payment').reduce((ss,v)=>ss+v.entries.reduce((x,e)=>x+(e.cr||0),0),0);
+    cfData.push(s-e);
+  }
+
+  const profitPct=totInc>0?((netP/totInc)*100).toFixed(1):0;
+
   eid('content').innerHTML=`
-  <div style="background:linear-gradient(135deg,#0f172a,#1e3a6e);border-radius:14px;padding:18px 22px;color:#fff;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+  <style>
+  .dash-kpi{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px;}
+  .kpi-card{border-radius:14px;padding:16px 18px;color:#fff;position:relative;overflow:hidden;cursor:default;transition:transform .15s,box-shadow .15s;}
+  .kpi-card:hover{transform:translateY(-3px);box-shadow:0 8px 25px rgba(0,0,0,.15);}
+  .kpi-card::before{content:'';position:absolute;right:-15px;top:-15px;width:90px;height:90px;background:rgba(255,255,255,.08);border-radius:50%;}
+  .kpi-card::after{content:'';position:absolute;right:10px;bottom:-20px;width:60px;height:60px;background:rgba(255,255,255,.05);border-radius:50%;}
+  .kpi-icon{font-size:22px;margin-bottom:8px;display:block;position:relative;z-index:1;}
+  .kpi-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;opacity:.8;position:relative;z-index:1;}
+  .kpi-val{font-size:19px;font-weight:800;margin-top:5px;font-family:'IBM Plex Mono',monospace;position:relative;z-index:1;letter-spacing:-0.5px;}
+  .kpi-sub{font-size:10px;opacity:.65;margin-top:3px;position:relative;z-index:1;}
+  .kpi-trend{font-size:10px;margin-top:4px;font-weight:700;position:relative;z-index:1;}
+  .kpi-b{background:linear-gradient(135deg,#1d4ed8,#3b82f6);}
+  .kpi-g{background:linear-gradient(135deg,#047857,#10b981);}
+  .kpi-r{background:linear-gradient(135deg,#b91c1c,#ef4444);}
+  .kpi-p{background:linear-gradient(135deg,#6d28d9,#a78bfa);}
+  .kpi-o{background:linear-gradient(135deg,#b45309,#f59e0b);}
+  .kpi-t{background:linear-gradient(135deg,#0f766e,#2dd4bf);}
+  .dash-charts-row{display:grid;grid-template-columns:1.6fr 1fr;gap:14px;margin-bottom:14px;}
+  .dash-charts-row2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+  .chart-card{background:#fff;border:1px solid var(--bdr);border-radius:14px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.05);}
+  .chart-card-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--bdr);background:#f8fafc;}
+  .chart-card-title{font-size:12px;font-weight:700;color:#0f172a;}
+  .chart-card-body{padding:14px;}
+  .dash-bottom{display:grid;grid-template-columns:1.3fr 1fr;gap:14px;margin-bottom:14px;}
+  .qa-modern{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:20px;}
+  .qa-btn{display:flex;flex-direction:column;align-items:center;gap:6px;padding:13px 8px;border-radius:12px;border:1.5px solid;cursor:pointer;background:none;font-family:var(--font);transition:all .18s;}
+  .qa-btn:hover{transform:translateY(-3px);box-shadow:0 6px 18px rgba(0,0,0,.12);}
+  .qa-icon{font-size:22px;line-height:1;}
+  .qa-lbl{font-size:10px;font-weight:700;text-align:center;line-height:1.3;}
+  .dash-section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--tm);margin-bottom:10px;}
+  .profit-indicator{display:flex;align-items:center;gap:8px;}
+  .profit-bar-wrap{flex:1;background:#e2e8f0;border-radius:20px;height:6px;overflow:hidden;}
+  .profit-bar-fill{height:100%;border-radius:20px;transition:width .6s ease;}
+  </style>
+
+  <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a6e 60%,#0b4a6e 100%);border-radius:16px;padding:18px 24px;color:#fff;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;box-shadow:0 4px 20px rgba(15,23,42,.3);">
     <div>
-      <div style="font-size:21px;font-weight:700;">${state.company}</div>
-      <div style="color:#93c5fd;font-size:12px;margin-top:4px;">
-        FY ${state.fy} &nbsp;·&nbsp; ${fmtD(state.fyStart)} — ${fmtD(state.fyEnd)}
-        ${state.gstin?'&nbsp;·&nbsp; GSTIN: <strong>'+state.gstin+'</strong>':''}
-        ${state.companyState?'&nbsp;·&nbsp; '+state.companyState:''}
+      <div style="font-size:22px;font-weight:800;letter-spacing:-0.5px;">${state.company}</div>
+      <div style="color:#93c5fd;font-size:12px;margin-top:5px;display:flex;gap:10px;flex-wrap:wrap;">
+        <span>📅 FY ${state.fy}</span>
+        <span>·</span><span>${fmtD(state.fyStart)} — ${fmtD(state.fyEnd)}</span>
+        ${state.gstin?'<span>·</span><span>GSTIN: <strong>'+state.gstin+'</strong></span>':''}
+        ${state.companyState?'<span>·</span><span>'+state.companyState+'</span>':''}
       </div>
     </div>
     <div style="text-align:right;">
-      <div style="font-size:13px;color:#93c5fd;">${fmtD(today())}</div>
+      <div style="font-size:13px;color:#bfdbfe;font-weight:600;">${fmtD(today())}</div>
+      <div style="font-size:11px;color:#64748b;margin-top:3px;">${totVouchers} vouchers recorded</div>
       ${!state.gstin?'<div style="font-size:10px;color:#fbbf24;margin-top:3px;">⚠ Set GSTIN in Settings</div>':''}
     </div>
   </div>
 
-  <div class="sg">
-    <div class="sc sc-b"><div class="sl">Total Assets</div><div class="sv">${fmt(totAssets)}</div><div class="ss">${state.accounts.filter(a=>a.type==='Asset').length} accounts</div></div>
-    <div class="sc ${netP>=0?'sc-g':'sc-r'}"><div class="sl">Net ${netP>=0?'Profit':'Loss'}</div><div class="sv">${fmt(Math.abs(netP))}</div><div class="ss">${totInc>0?((netP/totInc)*100).toFixed(1):0}% margin</div></div>
-    <div class="sc sc-p"><div class="sl">Cash & Bank</div><div class="sv">${fmt(cash)}</div><div class="ss">Liquid balance</div></div>
-    <div class="sc sc-r"><div class="sl">Total Liabilities</div><div class="sv">${fmt(totLiab)}</div><div class="ss">${state.accounts.filter(a=>a.type==='Liability').length} accounts</div></div>
-  </div>
-
-  <div style="margin-bottom:16px;">
-    <div style="font-weight:700;color:var(--tm);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Quick Actions</div>
-    <div class="qg" style="grid-template-columns:repeat(5,1fr);">
-      <button class="ql q1" onclick="navigate('vouchers')"><span class="qi">📝</span><span class="qlb">New Voucher</span></button>
-      <button class="ql q2" onclick="navigate('items')"><span class="qi">📦</span><span class="qlb">Item Master</span></button>
-      <button class="ql q7" onclick="navigate('vendors')"><span class="qi">🏭</span><span class="qlb">Vendors</span></button>
-      <button class="ql q8" onclick="navigate('debtors')"><span class="qi">🤝</span><span class="qlb">Debtors</span></button>
-      <button class="ql q4" onclick="navigate('advances')"><span class="qi">💰</span><span class="qlb">Advances</span></button>
-      <button class="ql q3" onclick="navigate('trial')"><span class="qi">⚖️</span><span class="qlb">Trial Balance</span></button>
-      <button class="ql q4" onclick="navigate('pnl')"><span class="qi">📊</span><span class="qlb">P & L</span></button>
-      <button class="ql q5" onclick="navigate('balance')"><span class="qi">🏗</span><span class="qlb">Balance Sheet</span></button>
-      <button class="ql q6" onclick="navigate('cashflow')"><span class="qi">💸</span><span class="qlb">Cash Flow</span></button>
-      <button class="ql q6" onclick="navigate('bankrecon')"><span class="qi">🏦</span><span class="qlb">Bank Recon</span></button>
+  <div class="dash-kpi">
+    <div class="kpi-card kpi-b">
+      <span class="kpi-icon">💰</span>
+      <div class="kpi-lbl">Total Income</div>
+      <div class="kpi-val">${fmt(totInc)}</div>
+      <div class="kpi-sub">This financial year</div>
+    </div>
+    <div class="kpi-card kpi-r">
+      <span class="kpi-icon">📤</span>
+      <div class="kpi-lbl">Total Expenses</div>
+      <div class="kpi-val">${fmt(totExp)}</div>
+      <div class="kpi-sub">This financial year</div>
+    </div>
+    <div class="kpi-card ${netP>=0?'kpi-g':'kpi-r'}">
+      <span class="kpi-icon">${netP>=0?'📈':'📉'}</span>
+      <div class="kpi-lbl">Net ${netP>=0?'Profit':'Loss'}</div>
+      <div class="kpi-val">${fmt(Math.abs(netP))}</div>
+      <div class="kpi-trend">${profitPct}% margin</div>
+    </div>
+    <div class="kpi-card kpi-p">
+      <span class="kpi-icon">🏦</span>
+      <div class="kpi-lbl">Cash & Bank</div>
+      <div class="kpi-val">${fmt(cash)}</div>
+      <div class="kpi-sub">Liquid balance</div>
+    </div>
+    <div class="kpi-card ${netGst>=0?'kpi-o':'kpi-t'}">
+      <span class="kpi-icon">🧾</span>
+      <div class="kpi-lbl">GST ${netGst>=0?'Payable':'Credit'}</div>
+      <div class="kpi-val">${fmt(Math.abs(netGst))}</div>
+      <div class="kpi-sub">${netGst>=0?'Net liability':'Input credit'}</div>
     </div>
   </div>
 
-  <div class="g2" style="gap:16px;margin-bottom:16px;">
-    <div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-        <div style="font-weight:700;color:var(--tm);font-size:10px;text-transform:uppercase;letter-spacing:1px;">Sales vs Expenses</div>
+  <div class="dash-section-title">📊 Financial Charts</div>
+  <div class="dash-charts-row">
+    <div class="chart-card">
+      <div class="chart-card-hdr">
+        <span class="chart-card-title">📊 Revenue vs Expenses</span>
         <div class="tg">
           <button class="t ${dashFilter==='monthly'?'act':''}" onclick="dashFilter='monthly';pgDashboard()">Monthly</button>
           <button class="t ${dashFilter==='quarterly'?'act':''}" onclick="dashFilter='quarterly';pgDashboard()">Quarterly</button>
           <button class="t ${dashFilter==='yearly'?'act':''}" onclick="dashFilter='yearly';pgDashboard()">Yearly</button>
         </div>
       </div>
-      <div class="chart-wrap">
-        <div class="chart-legend">
-          <span><span class="leg-dot" style="background:#2563eb;"></span>Sales / Income</span>
-          <span><span class="leg-dot" style="background:#ef4444;"></span>Expenses</span>
-        </div>
-        ${buildBarChart()}
-      </div>
+      <div class="chart-card-body"><canvas id="ch-rev" height="170"></canvas></div>
     </div>
-    <div>
-      <div style="font-weight:700;color:var(--tm);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Recent Transactions</div>
-      <div class="card">
-        <table class="tbl">
-          <thead><tr><th>Voucher</th><th>Date</th><th>Type</th><th>Narration</th><th class="tr">Amount</th></tr></thead>
-          <tbody>${recent||'<tr><td colspan="5" class="tc tm-" style="padding:20px;">No transactions</td></tr>'}</tbody>
-        </table>
+    <div class="chart-card">
+      <div class="chart-card-hdr">
+        <span class="chart-card-title">🍩 Expense Breakdown</span>
       </div>
+      <div class="chart-card-body" style="display:flex;align-items:center;justify-content:center;"><canvas id="ch-exp" height="180" width="280"></canvas></div>
     </div>
   </div>
 
-  <div class="g2" style="gap:16px;">
+  <div class="dash-charts-row2">
+    <div class="chart-card">
+      <div class="chart-card-hdr">
+        <span class="chart-card-title">📈 Cash Flow Trend (6 months)</span>
+      </div>
+      <div class="chart-card-body"><canvas id="ch-cf" height="150"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-hdr">
+        <span class="chart-card-title">🥧 Income Breakdown</span>
+      </div>
+      <div class="chart-card-body" style="display:flex;align-items:center;justify-content:center;"><canvas id="ch-inc" height="150" width="280"></canvas></div>
+    </div>
+  </div>
+
+  <div class="dash-section-title">⚡ Quick Actions</div>
+  <div class="qa-modern">
+    <button class="qa-btn q1" onclick="navigate('vouchers')"><span class="qa-icon">📝</span><span class="qa-lbl">New Voucher</span></button>
+    <button class="qa-btn q3" onclick="navigate('trial')"><span class="qa-icon">⚖️</span><span class="qa-lbl">Trial Balance</span></button>
+    <button class="qa-btn q4" onclick="navigate('pnl')"><span class="qa-icon">📊</span><span class="qa-lbl">P & L</span></button>
+    <button class="qa-btn q5" onclick="navigate('balance')"><span class="qa-icon">🏗</span><span class="qa-lbl">Balance Sheet</span></button>
+    <button class="qa-btn q6" onclick="navigate('gst')"><span class="qa-icon">🧾</span><span class="qa-lbl">GST Reports</span></button>
+    <button class="qa-btn q2" onclick="navigate('items')"><span class="qa-icon">📦</span><span class="qa-lbl">Item Master</span></button>
+    <button class="qa-btn q7" onclick="navigate('vendors')"><span class="qa-icon">🏭</span><span class="qa-lbl">Vendors</span></button>
+    <button class="qa-btn q8" onclick="navigate('debtors')"><span class="qa-icon">🤝</span><span class="qa-lbl">Debtors</span></button>
+    <button class="qa-btn q6" onclick="navigate('cashflow')"><span class="qa-icon">💸</span><span class="qa-lbl">Cash Flow</span></button>
+    <button class="qa-btn q6" onclick="navigate('bankrecon')"><span class="qa-icon">🏦</span><span class="qa-lbl">Bank Recon</span></button>
+  </div>
+
+  <div class="dash-bottom">
     <div>
-      <div style="font-weight:700;color:var(--tm);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">📥 Upcoming Receivables (Sales Due)</div>
-      ${buildDueTable(recv,'receivable')}
+      <div class="dash-section-title">🕐 Recent Transactions</div>
+      <div class="card">
+        <table class="tbl">
+          <thead><tr><th>Voucher</th><th>Date</th><th>Type</th><th>Narration</th><th class="tr">Amount</th></tr></thead>
+          <tbody>${recent||'<tr><td colspan="5" class="tc tm-" style="padding:20px;">No transactions yet</td></tr>'}</tbody>
+        </table>
+      </div>
     </div>
     <div>
-      <div style="font-weight:700;color:var(--tm);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">📤 Upcoming Payables (Purchase Due)</div>
+      <div class="dash-section-title">📥 Upcoming Receivables</div>
+      ${buildDueTable(recv,'receivable')}
+      <div style="margin-top:12px;" class="dash-section-title">📤 Upcoming Payables</div>
       ${buildDueTable(pay,'payable')}
     </div>
   </div>`;
+
+  // ── Render Chart.js charts ──────────────────────────────────────
+  const chartDefaults={
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{font:{family:'IBM Plex Sans',size:11},usePointStyle:true}},tooltip:{callbacks:{label:ctx=>' ₹'+fmtN(ctx.raw)}}},
+    scales:{x:{grid:{display:false},ticks:{font:{family:'IBM Plex Sans',size:10}}},y:{grid:{color:'#f1f5f9'},ticks:{font:{family:'IBM Plex Sans',size:10},callback:v=>'₹'+fmtN(v/1000)+'k'}}}
+  };
+
+  // 1. Revenue vs Expenses bar chart
+  const {labels:rLabels,income:rIncome,expense:rExpense}=buildTimeSeriesData();
+  const ctxRev=document.getElementById('ch-rev');
+  if(ctxRev){
+    _dashCharts.rev=new Chart(ctxRev,{
+      type:'bar',
+      data:{
+        labels:rLabels,
+        datasets:[
+          {label:'Revenue / Income',data:rIncome,backgroundColor:'rgba(37,99,235,0.85)',borderRadius:6,borderSkipped:false},
+          {label:'Expenses',data:rExpense,backgroundColor:'rgba(239,68,68,0.85)',borderRadius:6,borderSkipped:false}
+        ]
+      },
+      options:{...JSON.parse(JSON.stringify(chartDefaults)),plugins:{...JSON.parse(JSON.stringify(chartDefaults)).plugins,tooltip:{callbacks:{label:ctx=>' ₹'+fmtN(ctx.raw)}}}}
+    });
+  }
+
+  // 2. Expense breakdown doughnut
+  const ctxExp=document.getElementById('ch-exp');
+  if(ctxExp){
+    const dColors=['#3b82f6','#ef4444','#f59e0b','#10b981','#8b5cf6','#06b6d4','#f97316','#ec4899','#14b8a6'];
+    _dashCharts.exp=new Chart(ctxExp,{
+      type:'doughnut',
+      data:{
+        labels:expLabels.length?expLabels:['No Expenses'],
+        datasets:[{data:expVals.length?expVals:[1],backgroundColor:dColors.slice(0,Math.max(expVals.length,1)),borderWidth:2,borderColor:'#fff',hoverOffset:8}]
+      },
+      options:{responsive:false,cutout:'65%',plugins:{legend:{position:'bottom',labels:{font:{family:'IBM Plex Sans',size:10},usePointStyle:true,padding:8}},tooltip:{callbacks:{label:ctx=>' ₹'+fmtN(ctx.raw)}}}}
+    });
+  }
+
+  // 3. Cash flow line chart
+  const ctxCf=document.getElementById('ch-cf');
+  if(ctxCf){
+    _dashCharts.cf=new Chart(ctxCf,{
+      type:'line',
+      data:{
+        labels:cfLabels,
+        datasets:[{
+          label:'Net Cash Flow',
+          data:cfData,
+          borderColor:'#2563eb',
+          backgroundColor:'rgba(37,99,235,0.08)',
+          borderWidth:2.5,
+          pointBackgroundColor:cfData.map(v=>v>=0?'#10b981':'#ef4444'),
+          pointRadius:5,
+          fill:true,
+          tension:0.35
+        }]
+      },
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' ₹'+fmtN(ctx.raw)}}},scales:{x:{grid:{display:false},ticks:{font:{family:'IBM Plex Sans',size:10}}},y:{grid:{color:'#f1f5f9'},ticks:{font:{family:'IBM Plex Sans',size:10},callback:v=>'₹'+fmtN(v/1000)+'k'}}}}
+    });
+  }
+
+  // 4. Income breakdown pie
+  const ctxInc=document.getElementById('ch-inc');
+  if(ctxInc){
+    const pColors=['#10b981','#2563eb','#f59e0b','#8b5cf6','#06b6d4','#f97316'];
+    _dashCharts.inc=new Chart(ctxInc,{
+      type:'pie',
+      data:{
+        labels:incLabels.length?incLabels:['No Income'],
+        datasets:[{data:incVals.length?incVals:[1],backgroundColor:pColors.slice(0,Math.max(incVals.length,1)),borderWidth:2,borderColor:'#fff',hoverOffset:8}]
+      },
+      options:{responsive:false,plugins:{legend:{position:'bottom',labels:{font:{family:'IBM Plex Sans',size:10},usePointStyle:true,padding:8}},tooltip:{callbacks:{label:ctx=>' ₹'+fmtN(ctx.raw)}}}}
+    });
+  }
 }
 
-function buildBarChart(){
-  let data=[];
+function buildTimeSeriesData(){
+  const labels=[],income=[],expense=[];
   if(dashFilter==='monthly'){
     for(let i=5;i>=0;i--){
       const d=new Date(new Date().getFullYear(),new Date().getMonth()-i,1);
       const yr=d.getFullYear(),mo=String(d.getMonth()+1).padStart(2,'0');
-      const lbl=d.toLocaleString('en-IN',{month:'short'})+"'"+String(yr).slice(2);
-      const px=`${yr}-${mo}`;
-      const s=state.vouchers.filter(v=>v.date.startsWith(px)&&v.type==='Sales').reduce((ss,v)=>ss+v.entries.reduce((x,e)=>x+(e.cr||0),0),0);
-      const e=state.vouchers.filter(v=>v.date.startsWith(px)&&['Purchase','Payment'].includes(v.type)).reduce((ss,v)=>ss+v.entries.reduce((x,e)=>x+(e.dr||0),0),0);
-      data.push({lbl,s,e});
+      labels.push(d.toLocaleString('en-IN',{month:'short'})+"'"+String(yr).slice(2));
+      const s=state.vouchers.filter(v=>v.date.startsWith(`${yr}-${mo}`)&&v.type==='Sales').reduce((ss,v)=>ss+v.entries.reduce((x,e)=>x+(e.cr||0),0),0);
+      const e=state.vouchers.filter(v=>v.date.startsWith(`${yr}-${mo}`)&&['Purchase','Payment'].includes(v.type)).reduce((ss,v)=>ss+v.entries.reduce((x,e)=>x+(e.dr||0),0),0);
+      income.push(s); expense.push(e);
     }
   }else if(dashFilter==='quarterly'){
     const now=new Date();
@@ -762,44 +958,24 @@ function buildBarChart(){
       const d=new Date(now.getFullYear(),now.getMonth()-i*3,1);
       const yr=d.getFullYear(),qm=Math.floor(d.getMonth()/3);
       const months=[(qm*3),(qm*3)+1,(qm*3)+2].map(m=>String(m+1).padStart(2,'0'));
-      const lbl=`Q${qm+1}'${String(yr).slice(2)}`;
+      labels.push(`Q${qm+1}'${String(yr).slice(2)}`);
       const s=state.vouchers.filter(v=>months.some(m=>v.date.startsWith(`${yr}-${m}`))&&v.type==='Sales').reduce((ss,v)=>ss+v.entries.reduce((x,e)=>x+(e.cr||0),0),0);
       const e=state.vouchers.filter(v=>months.some(m=>v.date.startsWith(`${yr}-${m}`))&&['Purchase','Payment'].includes(v.type)).reduce((ss,v)=>ss+v.entries.reduce((x,e)=>x+(e.dr||0),0),0);
-      data.push({lbl,s,e});
+      income.push(s); expense.push(e);
     }
   }else{
     const yr=new Date().getFullYear();
     for(let y=yr-2;y<=yr;y++){
+      labels.push(String(y));
       const s=state.vouchers.filter(v=>v.date.startsWith(String(y))&&v.type==='Sales').reduce((ss,v)=>ss+v.entries.reduce((x,e)=>x+(e.cr||0),0),0);
       const e=state.vouchers.filter(v=>v.date.startsWith(String(y))&&['Purchase','Payment'].includes(v.type)).reduce((ss,v)=>ss+v.entries.reduce((x,e)=>x+(e.dr||0),0),0);
-      data.push({lbl:String(y),s,e});
+      income.push(s); expense.push(e);
     }
   }
-  const W=620,H=180,PL=40,PB=30,PT=10;
-  const max=Math.max(...data.flatMap(d=>[d.s,d.e]),1);
-  const n=data.length;
-  const slot=(W-PL)/(n||1);
-  const bw=slot*0.3;
-  let bars='',labels='',ylines='';
-  [0.25,0.5,0.75,1].forEach(f=>{
-    const y=PT+(H-PB-PT)*(1-f);
-    ylines+=`<line x1="${PL}" y1="${y}" x2="${W}" y2="${y}" stroke="#f1f5f9" stroke-width="1"/>`;
-    ylines+=`<text x="${PL-4}" y="${y+4}" text-anchor="end" font-size="8" fill="#94a3b8">₹${fmtN(max*f/1000)}k</text>`;
-  });
-  data.forEach((d,i)=>{
-    const cx=PL+slot*i+slot/2;
-    const sh=d.s>0?((d.s/max)*(H-PB-PT)):0;
-    const eh=d.e>0?((d.e/max)*(H-PB-PT)):0;
-    bars+=`<rect x="${cx-bw-1}" y="${H-PB-sh}" width="${bw}" height="${sh}" fill="#2563eb" rx="2" opacity=".85"/>`;
-    bars+=`<rect x="${cx+1}" y="${H-PB-eh}" width="${bw}" height="${eh}" fill="#ef4444" rx="2" opacity=".85"/>`;
-    labels+=`<text x="${cx}" y="${H-PB+12}" text-anchor="middle" font-size="9" fill="#64748b">${d.lbl}</text>`;
-  });
-  return `<svg width="100%" viewBox="0 0 ${W} ${H}" style="font-family:IBM Plex Sans,sans-serif;display:block;">
-    ${ylines}
-    <line x1="${PL}" y1="${H-PB}" x2="${W}" y2="${H-PB}" stroke="#e2e8f0" stroke-width="1.5"/>
-    ${bars}${labels}
-  </svg>`;
+  return{labels,income,expense};
 }
+
+function buildBarChart(){return '';} // Legacy stub — replaced by Chart.js
 
 function getReceivables(){
   return state.vouchers
@@ -1255,7 +1431,7 @@ function renderVouchers(){
     <!-- LEFT: VOUCHER FORM -->
     <div>
       <div style="font-weight:700;color:var(--tm);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">
-        ${editVId?'✏ Edit Voucher: '+editVId:'🆕 New Voucher'}
+        ${editVId?'✏ Edit Voucher: '+editVId:'🆕 New Voucher — Zoho Style'}
       </div>
       <div class="fp">
         <!-- Header -->
@@ -3029,7 +3205,7 @@ function pgSettings(){
 
     <div class="card" style="padding:22px;margin-bottom:14px;">
       <div style="font-size:15px;font-weight:700;margin-bottom:4px;">💾 Storage Info</div>
-      <div style="font-size:12px;color:var(--tm);margin-bottom:12px;">All data is permanently stored in your browser's IndexedDB. It survives restarts and cache clears (unless you clear site data).</div>
+      <div style="font-size:12px;color:var(--tm);margin-bottom:12px;">All data is permanently stored in Supabase Cloud. It is safe, accessible from any device, and never deleted unless you manually clear it.</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <button class="btn btn-s" onclick="exportAllExcel()">⬇ Export Full Data (Excel)</button>
         <button class="btn btn-p" onclick="exportJSON()">💾 JSON Backup</button>
@@ -3171,7 +3347,7 @@ async function init(){
     if(currentUser) navigate('dashboard');
   }catch(e){
     console.error('Init error:',e);
-    alert('Database error: '+e.message+'\nUsing temporary storage.');
+    alert('Cloud connection error: '+e.message+'\nPlease check your internet connection and try again.');
     // Fallback: load from localStorage
     try{const ls=localStorage.getItem('accountally_fallback');if(ls)state=JSON.parse(ls);}catch(_){}
     // Skip login for fallback
