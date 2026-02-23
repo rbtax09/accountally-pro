@@ -470,18 +470,30 @@ async function doLogin(){
   const u=document.getElementById('li-user').value.trim();
   const p=document.getElementById('li-pass').value;
   if(!u||!p){showLoginErr('Please enter username and password.');return;}
-  const users=await DB.getAll('users');
-  const h=await sha256(p);
-  const found=users.find(x=>x.username===u&&x.passwordHash===h);
-  if(!found){showLoginErr('Invalid username or password.');return;}
-  currentUser=found;
-  sessionStorage.setItem('loggedInUser', found.username);
-  document.getElementById('login-wrap').classList.add('hidden');
-  document.getElementById('app').classList.remove('hidden');
-  const roleLabel=found.role==='admin'?'👑':found.role==='accountant'?'📊':'👁';
-  document.getElementById('usr-btn').textContent=`${roleLabel} ${found.username} ▾`;
-  applyRoleRestrictions(found.role);
-  navigate('dashboard');
+  // Disable button while logging in to prevent double-clicks
+  const btn=document.querySelector('#login-form-wrap .login-btn');
+  if(btn){btn.disabled=true;btn.textContent='Signing in…';}
+  try{
+    const users=await DB.getAll('users');
+    if(!users||users.length===0){showLoginErr('No users found. Please set up the application first.');return;}
+    const h=await sha256(p);
+    // Case-insensitive username match
+    const found=users.find(x=>x.username.toLowerCase()===u.toLowerCase()&&x.passwordHash===h);
+    if(!found){showLoginErr('Invalid username or password.');return;}
+    currentUser=found;
+    sessionStorage.setItem('loggedInUser', found.username);
+    document.getElementById('login-wrap').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    const roleLabel=found.role==='admin'?'👑':found.role==='accountant'?'📊':'👁';
+    document.getElementById('usr-btn').textContent=`${roleLabel} ${found.username} ▾`;
+    applyRoleRestrictions(found.role);
+    navigate('dashboard');
+  }catch(e){
+    console.error('Login error:',e);
+    showLoginErr('Connection error: '+(e.message||'Could not reach server. Check your internet connection.'));
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Sign In →';}
+  }
 }
 
 function applyRoleRestrictions(role){
@@ -509,29 +521,40 @@ async function doSetup(){
   if(!co||!u||!p){showLoginErr('All fields required.');return;}
   if(p!==p2){showLoginErr('Passwords do not match.');return;}
   if(p.length<4){showLoginErr('Password must be at least 4 characters.');return;}
-  const h=await sha256(p);
-  const user={id:'u1',username:u,passwordHash:h,role:'admin',fullName:u,createdAt:new Date().toISOString()};
-  await DB.set('users',u,user);
-  // init state with company name
-  const gstin2=(eid('su-gstin')?.value||'').toUpperCase().trim();
-  const s=JSON.parse(JSON.stringify(DEFAULT_STATE));
-  s.company=co;s.gstin=gstin2;
-  s.appUsers=[{username:u,role:'admin',fullName:u,createdAt:new Date().toISOString()}];
-  state=s;
-  await saveState();
-  currentUser=user;
-  sessionStorage.setItem('loggedInUser', u);
-  document.getElementById('login-wrap').classList.add('hidden');
-  document.getElementById('app').classList.remove('hidden');
-  document.getElementById('usr-btn').textContent=`👤 ${u} ▾`;
-  document.getElementById('sb-company').textContent=co;
-  navigate('dashboard');
+  const setupBtn=document.querySelector('#setup-form-wrap .login-btn');
+  if(setupBtn){setupBtn.disabled=true;setupBtn.textContent='Creating account…';}
+  try{
+    const h=await sha256(p);
+    const user={id:'u1',username:u,passwordHash:h,role:'admin',fullName:u,createdAt:new Date().toISOString()};
+    await DB.set('users',u,user);
+    // init state with company name
+    const gstin2=(eid('su-gstin')?.value||'').toUpperCase().trim();
+    const s=JSON.parse(JSON.stringify(DEFAULT_STATE));
+    s.company=co;s.gstin=gstin2;
+    s.appUsers=[{username:u,role:'admin',fullName:u,createdAt:new Date().toISOString()}];
+    state=s;
+    await saveState();
+    currentUser=user;
+    sessionStorage.setItem('loggedInUser', u);
+    document.getElementById('login-wrap').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    document.getElementById('usr-btn').textContent=`👤 ${u} ▾`;
+    document.getElementById('sb-company').textContent=co;
+    navigate('dashboard');
+  }catch(e){
+    console.error('Setup error:',e);
+    showLoginErr('Setup failed: '+(e.message||'Could not save to cloud. Check your internet connection.'));
+  }finally{
+    if(setupBtn){setupBtn.disabled=false;setupBtn.textContent='Create Account & Start →';}
+  }
 }
 
 function showLoginErr(msg){
   const el=document.getElementById('login-err');
   el.textContent=msg; el.style.display='block';
-  setTimeout(()=>el.style.display='none',3500);
+  // Clear any previous auto-hide timer
+  if(showLoginErr._timer) clearTimeout(showLoginErr._timer);
+  showLoginErr._timer=setTimeout(()=>{el.style.display='none';showLoginErr._timer=null;},6000);
 }
 
 function showUserMenu(){
@@ -543,8 +566,8 @@ function showUserMenu(){
       <div style="color:var(--tm);font-size:12px;">${roleInfo[currentUser?.role]||'User'}</div>
     </div>
     <div style="display:flex;flex-direction:column;gap:10px;">
-      ${currentUser?.role==='admin'?'<button class="btn btn-g" style="justify-content:flex-start;" onclick="closeModal();navigate('settings')">⚙️ Settings</button>':''}
-      ${currentUser?.role==='admin'?'<button class="btn btn-g" style="justify-content:flex-start;" onclick="closeModal();navigate('usermgmt')">🔐 User Management</button>':''}
+      ${currentUser?.role==='admin'?'<button class="btn btn-g" style="justify-content:flex-start;" onclick="closeModal();navigate(\'settings\')">⚙️ Settings</button>':''}
+      ${currentUser?.role==='admin'?'<button class="btn btn-g" style="justify-content:flex-start;" onclick="closeModal();navigate(\'usermgmt\')">🔐 User Management</button>':''}
       <button class="btn btn-d" style="justify-content:flex-start;" onclick="doLogout()">🚪 Logout</button>
     </div>
   `);
@@ -4183,13 +4206,13 @@ async function init(){
     if(currentUser) navigate('dashboard');
   }catch(e){
     console.error('Init error:',e);
-    alert('Cloud connection error: '+e.message+'\nPlease check your internet connection and try again.');
-    // Fallback: load from localStorage
+    // Fallback: load from localStorage if available
     try{const ls=localStorage.getItem('accountally_fallback');if(ls)state=JSON.parse(ls);}catch(_){}
-    // Skip login for fallback
-    document.getElementById('login-wrap').classList.add('hidden');
-    document.getElementById('app').classList.remove('hidden');
-    navigate('dashboard');
+    // Show login — do NOT bypass authentication even on error
+    document.getElementById('login-wrap').classList.remove('hidden');
+    document.getElementById('app').classList.add('hidden');
+    // Warn the user about connection issue on the login screen
+    showLoginErr('⚠️ Cloud connection error: '+(e.message||'Check your internet connection.')+' Login may not work until restored.');
   }
 }
 
