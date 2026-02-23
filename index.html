@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Grey Wolf Capital</title>
+<title>AccounTally Pro</title>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -207,7 +207,7 @@ input[type=number]{-moz-appearance:textfield;}
   <div class="login-box">
     <div class="login-logo">
       <div class="login-logo-icon">📊</div>
-      <div class="login-logo-name">Grey Wolf Capital</div>
+      <div class="login-logo-name">AccounTally Pro</div>
       <div class="login-logo-sub">Professional Accounting Software</div>
     </div>
     <div class="login-error" id="login-err"></div>
@@ -392,42 +392,58 @@ const DEFAULT_STATE = {
   advances:[],
 };
 
-// ══ DB ══
 // ══ SUPABASE CLIENT ══
 const SUPA_URL = 'https://dfsltxehfdmnwxkwecww.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRmc2x0eGVoZmRtbnd4a3dlY3d3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NTg0MDgsImV4cCI6MjA4NzQzNDQwOH0.Xe8JTV2Gw1WfCx-0U4im64dZ8aw_wYWhrFqciDrX990';
-const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
+let supa = null;
+function getSupa(){
+  if(!supa){
+    if(typeof supabase === 'undefined') throw new Error('Supabase library not loaded. Please check your internet connection.');
+    supa = supabase.createClient(SUPA_URL, SUPA_KEY);
+  }
+  return supa;
+}
+
+// Map app user object (camelCase) ↔ DB row (snake_case)
+function userToRow(u){ return {username:u.username, id:u.id||'u1', password_hash:u.passwordHash, role:u.role||'admin'}; }
+function rowToUser(r){ return {username:r.username, id:r.id, passwordHash:r.password_hash, role:r.role}; }
 
 const DB = {
-  async open(){ return true; }, // Supabase needs no local open
+  async open(){ return true; },
   async get(store, key){
+    const db = getSupa();
     const tbl = store==='users' ? 'app_users' : 'app_data';
     const col = store==='users' ? 'username' : 'id';
-    const {data,error} = await supa.from(tbl).select('*').eq(col,key).maybeSingle();
+    const {data,error} = await db.from(tbl).select('*').eq(col,key).maybeSingle();
     if(error) throw error;
     if(!data) return undefined;
-    return store==='users' ? data : data.state;
+    return store==='users' ? rowToUser(data) : data.state;
   },
   async set(store, key, val){
+    const db = getSupa();
     const tbl = store==='users' ? 'app_users' : 'app_data';
     if(store==='users'){
-      const {error} = await supa.from(tbl).upsert({username:key,...val},{onConflict:'username'});
+      const row = userToRow(val);
+      const {error} = await db.from(tbl).upsert(row, {onConflict:'username'});
       if(error) throw error;
     } else {
-      const {error} = await supa.from(tbl).upsert({id:key, state:val},{onConflict:'id'});
+      const {error} = await db.from(tbl).upsert({id:key, state:val}, {onConflict:'id'});
       if(error) throw error;
     }
   },
   async getAll(store){
+    const db = getSupa();
     const tbl = store==='users' ? 'app_users' : 'app_data';
-    const {data,error} = await supa.from(tbl).select('*');
+    const {data,error} = await db.from(tbl).select('*');
     if(error) throw error;
+    if(store==='users') return (data||[]).map(rowToUser);
     return data||[];
   },
   async del(store, key){
+    const db = getSupa();
     const tbl = store==='users' ? 'app_users' : 'app_data';
     const col = store==='users' ? 'username' : 'id';
-    const {error} = await supa.from(tbl).delete().eq(col,key);
+    const {error} = await db.from(tbl).delete().eq(col,key);
     if(error) throw error;
   }
 };
