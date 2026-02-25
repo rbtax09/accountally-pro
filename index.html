@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Shree Digitax Solutions</title>
+<title>AccounTally Pro</title>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -178,6 +178,12 @@ input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
 input[type=number]{-moz-appearance:textfield;}
 
+/* ── TOAST ANIMATION ── */
+@keyframes fadeInUp{
+  from{opacity:0;transform:translateY(16px);}
+  to{opacity:1;transform:translateY(0);}
+}
+
 /* ── DUE DATE COLORS ── */
 .due-over{color:#dc2626;font-weight:700;}
 .due-warn{color:#d97706;font-weight:700;}
@@ -240,6 +246,10 @@ input[type=number]{-moz-appearance:textfield;}
         <label class="login-label">Confirm Password</label>
         <input class="login-input" id="su-pass2" type="password" placeholder="Re-enter password">
       </div>
+      <div class="login-field">
+        <label class="login-label">GSTIN (optional)</label>
+        <input class="login-input" id="su-gstin" placeholder="e.g. 27AAPFU0939F1ZV" maxlength="15" style="text-transform:uppercase;">
+      </div>
       <button class="login-btn" onclick="doSetup()">Create Account & Start →</button>
     </div>
   </div>
@@ -284,6 +294,7 @@ input[type=number]{-moz-appearance:textfield;}
       <div class="ni" id="nav-cashflow" onclick="navigate('cashflow')"><span class="nico">💸</span><span class="nlb">Cash Flow (AS-3)</span></div>
       <div class="ni" id="nav-gst" onclick="navigate('gst')"><span class="nico">🧾</span><span class="nlb">GST Reports</span></div>
       <div class="ni" id="nav-tds" onclick="navigate('tds')"><span class="nico">📑</span><span class="nlb">TDS Reports</span></div>
+      <div class="ni" id="nav-outstanding" onclick="navigate('outstanding')"><span class="nico">🔴</span><span class="nlb">Outstanding Report</span></div>
       <div class="nsec">Data</div>
       <div class="ni" id="nav-import" onclick="navigate('import')"><span class="nico">🔄</span><span class="nlb">Excel Import/Export</span></div>
       <div class="nsec">Admin</div>
@@ -416,8 +427,8 @@ function getSupa(){
 }
 
 // Map app user object (camelCase) ↔ DB row (snake_case)
-function userToRow(u){ return {username:u.username, id:u.id||'u1', password_hash:u.passwordHash, role:u.role||'admin'}; }
-function rowToUser(r){ return {username:r.username, id:r.id, passwordHash:r.password_hash, role:r.role}; }
+function userToRow(u){ return {username:u.username, id:u.id||'u1', password_hash:u.passwordHash, role:u.role||'admin', full_name:u.fullName||''}; }
+function rowToUser(r){ return {username:r.username, id:r.id, passwordHash:r.password_hash, role:r.role, fullName:r.full_name||''}; }
 
 const DB = {
   async open(){ return true; },
@@ -669,7 +680,8 @@ const PTITLES={dashboard:'🏠 Dashboard',accounts:'📋 Chart of Accounts',item
   'reg-debit':'📤 Debit Note Register','reg-credit':'📥 Credit Note Register',
   'reg-journal':'📓 Journal Register',
   invoice:'🧾 GST Invoice Generator',employees:'👥 Employee Master',
-  payroll:'💼 Payroll Processing',usermgmt:'🔐 User Management'};
+  payroll:'💼 Payroll Processing',usermgmt:'🔐 User Management',
+  outstanding:'🔴 Party-wise Outstanding Report'};
 
 function navigate(page){
   if(typeof destroyDashCharts==='function') destroyDashCharts();
@@ -681,7 +693,7 @@ function navigate(page){
     vouchers:pgVouchers,advances:pgAdvances,daybook:pgDayBook,cashbook:pgCashBook,ledger:pgLedger,
     bankrecon:pgBankRecon,trial:pgTrial,pnl:pgPnL,balance:pgBalance,cashflow:pgCashFlow,
     gst:pgGST,tds:pgTDS,import:pgImport,settings:pgSettings,
-    invoice:pgInvoice,employees:pgEmployees,payroll:pgPayroll,usermgmt:pgUserMgmt,
+    invoice:pgInvoice,employees:pgEmployees,payroll:pgPayroll,usermgmt:pgUserMgmt,outstanding:pgOutstanding,
     'reg-sales':()=>pgRegister('Sales'),'reg-purchase':()=>pgRegister('Purchase'),
     'reg-debit':()=>pgRegister('Debit Note'),'reg-credit':()=>pgRegister('Credit Note'),
     'reg-journal':()=>pgRegister('Journal')};
@@ -695,6 +707,7 @@ function openModal(title,html){
 }
 function closeModal(){document.getElementById('modal').classList.add('hidden');}
 function eid(id){return document.getElementById(id);}
+function refocusSearch(id){const el=document.getElementById(id);if(el){const len=el.value.length;el.focus();el.setSelectionRange(len,len);}}
 function showToast(msg,color='#059669'){
   const t=document.createElement('div');
   t.style.cssText=`position:fixed;bottom:24px;right:24px;background:${color};color:#fff;padding:12px 20px;border-radius:12px;font-size:13px;font-weight:700;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.2);animation:fadeInUp .3s ease;`;
@@ -776,16 +789,39 @@ function pgDashboard(){
   const incLabels=Object.keys(incGroups);
   const incVals=Object.values(incGroups);
 
-  // Cash flow trend (monthly net)
+
+  // Cash flow trend — respects dashFilter (monthly/quarterly/yearly)
   const cfData=[];
   const cfLabels=[];
-  for(let i=5;i>=0;i--){
-    const d=new Date(new Date().getFullYear(),new Date().getMonth()-i,1);
-    const yr=d.getFullYear(),mo=String(d.getMonth()+1).padStart(2,'0');
-    cfLabels.push(d.toLocaleString('en-IN',{month:'short'})+"'"+String(yr).slice(2));
-    const s=state.vouchers.filter(v=>v.date.startsWith(`${yr}-${mo}`)&&v.type==='Receipt').reduce((ss,v)=>ss+v.entries.reduce((x,e)=>x+(e.dr||0),0),0);
-    const e=state.vouchers.filter(v=>v.date.startsWith(`${yr}-${mo}`)&&v.type==='Payment').reduce((ss,v)=>ss+v.entries.reduce((x,e)=>x+(e.cr||0),0),0);
-    cfData.push(s-e);
+  // Use account-type lookup: cash inflow = dr on Asset(Cash/Bank), outflow = cr on Asset(Cash/Bank)
+  // Simpler: sum net of Receipt vs Payment per period
+  function cfForPeriod(filterFn){
+    const inflow=state.vouchers.filter(v=>filterFn(v)&&v.type==='Receipt').reduce((ss,v)=>ss+v.entries.reduce((x,e)=>x+(e.dr||0),0),0);
+    const outflow=state.vouchers.filter(v=>filterFn(v)&&v.type==='Payment').reduce((ss,v)=>ss+v.entries.reduce((x,e)=>x+(e.cr||0),0),0);
+    return inflow-outflow;
+  }
+  if(dashFilter==='monthly'){
+    for(let i=5;i>=0;i--){
+      const d=new Date(new Date().getFullYear(),new Date().getMonth()-i,1);
+      const yr=d.getFullYear(),mo=String(d.getMonth()+1).padStart(2,'0');
+      cfLabels.push(d.toLocaleString('en-IN',{month:'short'})+"'"+String(yr).slice(2));
+      cfData.push(cfForPeriod(v=>v.date.startsWith(`${yr}-${mo}`)));
+    }
+  }else if(dashFilter==='quarterly'){
+    const now=new Date();
+    for(let i=3;i>=0;i--){
+      const d=new Date(now.getFullYear(),now.getMonth()-i*3,1);
+      const yr=d.getFullYear(),qm=Math.floor(d.getMonth()/3);
+      const months=[(qm*3),(qm*3)+1,(qm*3)+2].map(m=>String(m+1).padStart(2,'0'));
+      cfLabels.push(`Q${qm+1}'${String(yr).slice(2)}`);
+      cfData.push(cfForPeriod(v=>months.some(m=>v.date.startsWith(`${yr}-${m}`))));
+    }
+  }else{
+    const yr=new Date().getFullYear();
+    for(let y=yr-2;y<=yr;y++){
+      cfLabels.push(String(y));
+      cfData.push(cfForPeriod(v=>v.date.startsWith(String(y))));
+    }
   }
 
   const profitPct=totInc>0?((netP/totInc)*100).toFixed(1):0;
@@ -900,7 +936,7 @@ function pgDashboard(){
   <div class="dash-charts-row2">
     <div class="chart-card">
       <div class="chart-card-hdr">
-        <span class="chart-card-title">📈 Cash Flow Trend (6 months)</span>
+        <span class="chart-card-title">📈 Cash Flow Trend (${dashFilter==="monthly"?"6 Months":dashFilter==="quarterly"?"4 Quarters":"3 Years"})</span>
       </div>
       <div class="chart-card-body"><canvas id="ch-cf" height="150"></canvas></div>
     </div>
@@ -1021,14 +1057,29 @@ function pgDashboard(){
 }
 
 function buildTimeSeriesData(){
+  // Use account-type lookup so ALL voucher types (Journal, Receipt, etc.) are captured
+  const accType={};
+  state.accounts.forEach(a=>{accType[a.id]=a.type;});
+
+  function getIncExp(filterFn){
+    let s=0,e=0;
+    state.vouchers.filter(filterFn).forEach(v=>{
+      v.entries.forEach(en=>{
+        const t=accType[en.accId];
+        if(t==='Income'&&(en.cr||0)>0) s+=(en.cr||0);
+        if(t==='Expense'&&(en.dr||0)>0) e+=(en.dr||0);
+      });
+    });
+    return{s,e};
+  }
+
   const labels=[],income=[],expense=[];
   if(dashFilter==='monthly'){
     for(let i=5;i>=0;i--){
       const d=new Date(new Date().getFullYear(),new Date().getMonth()-i,1);
       const yr=d.getFullYear(),mo=String(d.getMonth()+1).padStart(2,'0');
       labels.push(d.toLocaleString('en-IN',{month:'short'})+"'"+String(yr).slice(2));
-      const s=state.vouchers.filter(v=>v.date.startsWith(`${yr}-${mo}`)&&v.type==='Sales').reduce((ss,v)=>ss+v.entries.reduce((x,e)=>x+(e.cr||0),0),0);
-      const e=state.vouchers.filter(v=>v.date.startsWith(`${yr}-${mo}`)&&['Purchase','Payment'].includes(v.type)).reduce((ss,v)=>ss+v.entries.reduce((x,e)=>x+(e.dr||0),0),0);
+      const{s,e}=getIncExp(v=>v.date.startsWith(`${yr}-${mo}`));
       income.push(s); expense.push(e);
     }
   }else if(dashFilter==='quarterly'){
@@ -1038,16 +1089,14 @@ function buildTimeSeriesData(){
       const yr=d.getFullYear(),qm=Math.floor(d.getMonth()/3);
       const months=[(qm*3),(qm*3)+1,(qm*3)+2].map(m=>String(m+1).padStart(2,'0'));
       labels.push(`Q${qm+1}'${String(yr).slice(2)}`);
-      const s=state.vouchers.filter(v=>months.some(m=>v.date.startsWith(`${yr}-${m}`))&&v.type==='Sales').reduce((ss,v)=>ss+v.entries.reduce((x,e)=>x+(e.cr||0),0),0);
-      const e=state.vouchers.filter(v=>months.some(m=>v.date.startsWith(`${yr}-${m}`))&&['Purchase','Payment'].includes(v.type)).reduce((ss,v)=>ss+v.entries.reduce((x,e)=>x+(e.dr||0),0),0);
+      const{s,e}=getIncExp(v=>months.some(m=>v.date.startsWith(`${yr}-${m}`)));
       income.push(s); expense.push(e);
     }
   }else{
     const yr=new Date().getFullYear();
     for(let y=yr-2;y<=yr;y++){
       labels.push(String(y));
-      const s=state.vouchers.filter(v=>v.date.startsWith(String(y))&&v.type==='Sales').reduce((ss,v)=>ss+v.entries.reduce((x,e)=>x+(e.cr||0),0),0);
-      const e=state.vouchers.filter(v=>v.date.startsWith(String(y))&&['Purchase','Payment'].includes(v.type)).reduce((ss,v)=>ss+v.entries.reduce((x,e)=>x+(e.dr||0),0),0);
+      const{s,e}=getIncExp(v=>v.date.startsWith(String(y)));
       income.push(s); expense.push(e);
     }
   }
@@ -1120,6 +1169,7 @@ function renderAccounts(){
     <tbody>${rows||'<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--tm)">No accounts found</td></tr>'}</tbody>
   </table></div>
   <div style="margin-top:7px;font-size:11px;color:var(--tm);">Showing ${fil.length} of ${state.accounts.length} accounts</div>`;
+  refocusSearch('acc-s');
 }
 
 function openAccForm(editId){
@@ -1183,7 +1233,7 @@ function renderVendors(){
   </tr>`).join('');
   eid('content').innerHTML=`
   <div class="tb no-print">
-    <input class="si" placeholder="🔍 Search vendors…" value="${vndSrch}" oninput="vndSrch=this.value;renderVendors()">
+    <input class="si" id="vnd-s" placeholder="🔍 Search vendors…" value="${vndSrch}" oninput="vndSrch=this.value;renderVendors()">
     <button class="btn btn-p" onclick="openPartyForm('vendor')">+ Add Vendor</button>
     <button class="btn btn-s" onclick="exportParty('vendor')" style="margin-left:auto;">⬇ Export Excel</button>
   </div>
@@ -1191,6 +1241,7 @@ function renderVendors(){
     <thead><tr><th>Name</th><th>City / Pincode</th><th>Contact</th><th>Email</th><th>GST Status</th><th class="no-print">Actions</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--tm)">No vendors added yet</td></tr>'}</tbody>
   </table></div>`;
+  refocusSearch('vnd-s');
 }
 
 function pgDebtors(){renderDebtors();}
@@ -1209,7 +1260,7 @@ function renderDebtors(){
   </tr>`).join('');
   eid('content').innerHTML=`
   <div class="tb no-print">
-    <input class="si" placeholder="🔍 Search customers…" value="${dbtSrch}" oninput="dbtSrch=this.value;renderDebtors()">
+    <input class="si" id="dbt-s" placeholder="🔍 Search customers…" value="${dbtSrch}" oninput="dbtSrch=this.value;renderDebtors()">
     <button class="btn btn-p" onclick="openPartyForm('debtor')">+ Add Customer / Debtor</button>
     <button class="btn btn-s" onclick="exportParty('debtor')" style="margin-left:auto;">⬇ Export Excel</button>
   </div>
@@ -1217,6 +1268,7 @@ function renderDebtors(){
     <thead><tr><th>Name</th><th>City / Pincode</th><th>Contact</th><th>Email</th><th>GST Status</th><th class="no-print">Actions</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--tm)">No customers added yet</td></tr>'}</tbody>
   </table></div>`;
+  refocusSearch('dbt-s');
 }
 
 function openPartyForm(ptype,editId){
@@ -1330,7 +1382,7 @@ function renderItems(){
   </tr>`).join('');
   eid('content').innerHTML=`
   <div class="tb no-print">
-    <input class="si" placeholder="🔍 Search items, HSN/SAC…" value="${itemSrch}" oninput="itemSrch=this.value;renderItems()">
+    <input class="si" id="itm-s" placeholder="🔍 Search items, HSN/SAC…" value="${itemSrch}" oninput="itemSrch=this.value;renderItems()">
     <button class="btn btn-p" onclick="openItemForm()">+ New Item / Service</button>
     <button class="btn btn-s" onclick="exportItems()" style="margin-left:auto;">⬇ Excel</button>
   </div>
@@ -1338,6 +1390,7 @@ function renderItems(){
     <thead><tr><th>Item ID</th><th>Name</th><th>Type</th><th>HSN/SAC</th><th>Unit</th><th class="tr">Sale Rate</th><th class="tr">Purchase Rate</th><th class="tc">GST%</th><th class="no-print">Actions</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="9" style="padding:20px;text-align:center;color:var(--tm);">No items yet. Add your products/services.</td></tr>'}</tbody>
   </table></div>`;
+  refocusSearch('itm-s');
 }
 function openItemForm(editId){
   const it=editId?(state.items||[]).find(x=>x.id===editId):null;
@@ -1590,8 +1643,8 @@ function renderVouchers(){
                 const totCrM=vManualEntries.reduce((s,x)=>s+(x.cr||0),0);
                 return`<tr class="m-acc-row">
                   <td><select class="fc m-acc" style="padding:4px 7px;font-size:12px;" onchange="vManualEntries[${i}].accId=this.value;renderVouchers()"><option value="">— Account —</option>${accOpts}</select></td>
-                  <td><input type="number" class="fc tr m-dr" style="padding:4px 7px;font-size:12px;" value="${e.dr||''}" min="0" placeholder="0" oninput="vManualEntries[${i}].dr=parseFloat(this.value)||0;renderVouchers()"></td>
-                  <td><input type="number" class="fc tr m-cr" style="padding:4px 7px;font-size:12px;" value="${e.cr||''}" min="0" placeholder="0" oninput="vManualEntries[${i}].cr=parseFloat(this.value)||0;renderVouchers()"></td>
+                  <td><input type="number" class="fc tr m-dr" style="padding:4px 7px;font-size:12px;" value="${e.dr||''}" min="0" placeholder="0" oninput="vManualEntries[${i}].dr=parseFloat(this.value)||0;refreshManualTotals()"></td>
+                  <td><input type="number" class="fc tr m-cr" style="padding:4px 7px;font-size:12px;" value="${e.cr||''}" min="0" placeholder="0" oninput="vManualEntries[${i}].cr=parseFloat(this.value)||0;refreshManualTotals()"></td>
                   <td class="tc">${vManualEntries.length>2?`<button class="btn btn-d btn-sm" onclick="vManualEntries.splice(${i},1);renderVouchers()">✕</button>`:''}</td>
                 </tr>`;
               }).join('')}
@@ -1605,12 +1658,13 @@ function renderVouchers(){
           </table>
           <div style="display:flex;gap:8px;align-items:center;">
             <button class="btn btn-g btn-sm" onclick="vManualEntries.push({accId:'',dr:0,cr:0});renderVouchers()">+ Add Row</button>
-            <span style="font-size:11px;color:var(--tm);">Debit must equal Credit</span>
+            <span class="bal-hint" style="font-size:11px;color:var(--tm);">Debit must equal Credit</span>
           </div>
         </div>
-        <div style="display:flex;gap:8px;margin-top:10px;">
-          <button class="btn btn-p btn-sm" onclick="saveManualVoucher()">💾 Save Manual Voucher</button>
-          ${editVId?`<button class="btn btn-g btn-sm" onclick="cancelEdit()">✕ Cancel</button>`:''}
+        <div style="display:flex;gap:8px;margin-top:12px;align-items:center;">
+          <button class="btn btn-p" onclick="showManualPreviewAndPost()" style="font-size:13px;padding:9px 18px;">👁 Preview &amp; Post Voucher</button>
+          ${editVId?`<button class="btn btn-g" onclick="cancelEdit()">✕ Cancel</button>`:''}
+          <span style="font-size:10px;color:var(--tm);">Manual · AS-1 Compliant</span>
         </div>`}
         ${vMode==='smart'?`
         <div style="display:flex;gap:8px;margin-top:12px;align-items:center;">
@@ -1624,31 +1678,96 @@ function renderVouchers(){
     <!-- RIGHT: LIVE JOURNAL PREVIEW PANEL -->
     <div>
       <div style="font-weight:700;color:var(--tm);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">📒 Live Journal Entry Preview</div>
-      <div style="background:#fff;border:1.5px solid #2563eb;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(37,99,235,.12);">
-        <div style="background:#0f172a;color:#fff;padding:10px 14px;font-size:12px;font-weight:700;display:flex;justify-content:space-between;">
-          <span>As per Double Entry (AS-1)</span>
-          <span class="${bal?'':''}">
-            ${preview.length>0?`<span style="background:${bal?'#059669':'#dc2626'};border-radius:20px;padding:2px 10px;font-size:10px;">${bal?'✓ Balanced':'✗ Not Balanced'}</span>`:''}
-          </span>
-        </div>
-        <table style="width:100%;border-collapse:collapse;font-size:11.5px;">
-          <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0;">
-            <th style="padding:6px 8px;text-align:left;font-size:10px;color:#64748b;">Acc ID</th>
-            <th style="padding:6px 8px;text-align:left;font-size:10px;color:#64748b;">Account Name</th>
-            <th style="padding:6px 8px;text-align:left;font-size:10px;color:#64748b;">Tag</th>
-            <th style="padding:6px 8px;text-align:right;font-size:10px;color:#059669;">Dr ₹</th>
-            <th style="padding:6px 8px;text-align:right;font-size:10px;color:#dc2626;">Cr ₹</th>
-          </tr></thead>
-          <tbody id="preview-tbody">${previewRows||'<tr><td colspan="5" style="padding:16px;text-align:center;color:#94a3b8;font-size:11px;">Select items above to see journal entries</td></tr>'}</tbody>
-        </table>
-        ${preview.length>0?`
-        <div style="background:#f8fafc;border-top:2px solid #e2e8f0;padding:8px 12px;display:grid;grid-template-columns:1fr 1fr;gap:4px;">
-          <div style="font-size:11px;color:#64748b;">Total Dr: <strong style="color:#059669;">${fmt(totDr)}</strong></div>
-          <div style="font-size:11px;color:#64748b;text-align:right;">Total Cr: <strong style="color:#dc2626;">${fmt(totCr)}</strong></div>
-        </div>`:''}
+      <div id="voucher-preview-wrap" style="background:#fff;border:1.5px solid #2563eb;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(37,99,235,.12);">
+        ${buildPreviewPanel(vMode,vManualEntries,preview,previewRows,bal,totDr,totCr,editVId)}
       </div>
     </div>
   </div>`;
+  // Always sync party dropdown to current voucher type after re-render
+  onVTypeChange(curType);
+  if(editVId){ const v=state.vouchers.find(x=>x.id===editVId); if(v&&eid('v-party')) eid('v-party').value=v.partyId||''; }
+}
+
+
+function refreshManualTotals(){
+  // Read live values from DOM into vManualEntries
+  document.querySelectorAll('.m-acc-row').forEach((row,i)=>{
+    if(vManualEntries[i]){
+      vManualEntries[i].dr = parseFloat(row.querySelector('.m-dr')?.value)||0;
+      vManualEntries[i].cr = parseFloat(row.querySelector('.m-cr')?.value)||0;
+    }
+  });
+  const totDr = vManualEntries.reduce((s,e)=>s+(e.dr||0),0);
+  const totCr = vManualEntries.reduce((s,e)=>s+(e.cr||0),0);
+  const bal = Math.abs(totDr-totCr)<0.01 && totDr>0;
+  // Update totals row
+  const tfoot = document.querySelector('#manual-entries tfoot tr');
+  if(tfoot){
+    tfoot.style.background = bal ? '#ecfdf5' : '#fef2f2';
+    const cells = tfoot.querySelectorAll('td');
+    if(cells[1]) cells[1].innerHTML = fmt(totDr);
+    if(cells[2]) cells[2].innerHTML = fmt(totCr);
+  }
+  const hint = document.querySelector('#manual-entries .bal-hint');
+  if(hint) hint.textContent = bal ? '✓ Balanced' : 'Debit must equal Credit';
+  // Also rebuild the right-side live preview panel
+  const previewWrap = document.querySelector('#voucher-preview-wrap');
+  if(previewWrap) previewWrap.innerHTML = buildPreviewPanel('manual', vManualEntries, [], '', false, totDr, totCr, editVId);
+}
+
+
+function buildPreviewPanel(mode, manualEntries, preview, previewRows, bal, totDr, totCr, editVId){
+  const th = '<thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0;"><th style="padding:6px 8px;text-align:left;font-size:10px;color:#64748b;">Acc ID</th><th style="padding:6px 8px;text-align:left;font-size:10px;color:#64748b;">Account Name</th><th style="padding:6px 8px;text-align:left;font-size:10px;color:#64748b;">Tag</th><th style="padding:6px 8px;text-align:right;font-size:10px;color:#059669;">Dr ₹</th><th style="padding:6px 8px;text-align:right;font-size:10px;color:#dc2626;">Cr ₹</th></tr></thead>';
+
+  if(mode === 'manual'){
+    const mEntries = manualEntries.filter(e => e.accId && (e.dr > 0 || e.cr > 0));
+    const mDr = mEntries.reduce((s,e) => s+(e.dr||0), 0);
+    const mCr = mEntries.reduce((s,e) => s+(e.cr||0), 0);
+    const mBal = Math.abs(mDr-mCr) < 0.01 && mEntries.length >= 2;
+    const mRows = mEntries.map(e =>
+      '<tr style="border-bottom:1px solid #f1f5f9;">' +
+      '<td style="padding:6px 8px;font-family:monospace;color:#2563eb;font-size:11px;">'+e.accId+'</td>' +
+      '<td style="padding:6px 8px;font-size:11px;">'+aN(e.accId)+'</td>' +
+      '<td style="padding:6px 8px;font-size:10px;color:#64748b;">Manual</td>' +
+      '<td style="padding:6px 8px;text-align:right;color:#059669;font-weight:700;">'+(e.dr>0?fmt(e.dr):'—')+'</td>' +
+      '<td style="padding:6px 8px;text-align:right;color:#dc2626;font-weight:700;">'+(e.cr>0?fmt(e.cr):'—')+'</td>' +
+      '</tr>'
+    ).join('');
+    const balBadge = mEntries.length > 0
+      ? '<span style="background:'+(mBal?'#059669':'#dc2626')+';border-radius:20px;padding:2px 10px;font-size:10px;">'+(mBal?'✓ Balanced':'✗ Not Balanced')+'</span>'
+      : '';
+    const totalsRow = mEntries.length > 0
+      ? '<div style="background:#f8fafc;border-top:2px solid #e2e8f0;padding:8px 12px;display:grid;grid-template-columns:1fr 1fr;gap:4px;"><div style="font-size:11px;color:#64748b;">Total Dr: <strong style="color:#059669;">'+fmt(mDr)+'</strong></div><div style="font-size:11px;color:#64748b;text-align:right;">Total Cr: <strong style="color:#dc2626;">'+fmt(mCr)+'</strong></div></div>'
+      : '';
+    const actionRow = mBal
+      ? '<div style="padding:8px 14px;background:#ecfdf5;border-top:1px solid #a7f3d0;font-size:11px;font-weight:700;color:#065f46;">✅ Entry is Balanced — use the button below to post</div>'
+      : '<div style="padding:8px 14px;background:#fef2f2;border-top:1px solid #fca5a5;font-size:11px;color:#991b1b;font-weight:600;">⚠ Balance Dr = Cr to enable posting</div>';
+    const emptyRow = '<tr><td colspan="5" style="padding:16px;text-align:center;color:#94a3b8;font-size:11px;">Fill account rows above to preview</td></tr>';
+    return '<div style="background:#0f172a;color:#fff;padding:10px 14px;font-size:12px;font-weight:700;display:flex;justify-content:space-between;"><span>As per Double Entry (AS-1)</span>'+balBadge+'</div>' +
+      '<table style="width:100%;border-collapse:collapse;font-size:11.5px;">' + th + '<tbody>'+(mRows||emptyRow)+'</tbody></table>' +
+      totalsRow + actionRow;
+  } else {
+    const balBadge = preview.length > 0
+      ? '<span style="background:'+(bal?'#059669':'#dc2626')+';border-radius:20px;padding:2px 10px;font-size:10px;">'+(bal?'✓ Balanced':'✗ Not Balanced')+'</span>'
+      : '';
+    // Journal/Contra hint
+    if(preview.length===1 && preview[0]._journalHint){
+      return '<div style="background:#0f172a;color:#fff;padding:10px 14px;font-size:12px;font-weight:700;">As per Double Entry (AS-1)</div>' +
+        '<div style="padding:20px 16px;text-align:center;">' +
+        '<div style="font-size:24px;margin-bottom:8px;">📓</div>' +
+        '<div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:6px;">Journal / Contra Entry</div>' +
+        '<div style="font-size:12px;color:#64748b;margin-bottom:14px;">These voucher types require manual account selection. Switch to Manual mode to enter Dr/Cr freely.</div>' +
+        '<button class="btn btn-p" onclick="vMode=\'manual\';renderVouchers()" style="font-size:12px;">→ Switch to Manual (Accounts) Mode</button>' +
+        '</div>';
+    }
+    const emptyRow = '<tr><td colspan="5" style="padding:16px;text-align:center;color:#94a3b8;font-size:11px;">Select items above to see journal entries</td></tr>';
+    const totalsRow = preview.length > 0
+      ? '<div style="background:#f8fafc;border-top:2px solid #e2e8f0;padding:8px 12px;display:grid;grid-template-columns:1fr 1fr;gap:4px;"><div style="font-size:11px;color:#64748b;">Total Dr: <strong style="color:#059669;">'+fmt(totDr)+'</strong></div><div style="font-size:11px;color:#64748b;text-align:right;">Total Cr: <strong style="color:#dc2626;">'+fmt(totCr)+'</strong></div></div>'
+      : '';
+    return '<div style="background:#0f172a;color:#fff;padding:10px 14px;font-size:12px;font-weight:700;display:flex;justify-content:space-between;"><span>As per Double Entry (AS-1)</span>'+balBadge+'</div>' +
+      '<table style="width:100%;border-collapse:collapse;font-size:11.5px;">' + th + '<tbody id="preview-tbody">'+(previewRows||emptyRow)+'</tbody></table>' +
+      totalsRow;
+  }
 }
 
 // ── Item line helpers ──
@@ -1755,6 +1874,8 @@ function computePreviewEntries(vtype, lines){
       entries[1].cr=Math.round((entries[1].cr-tax.tds)*100)/100;
     }
   }
+  // Journal / Contra — not auto-computable, return special marker
+  if(['Journal','Contra'].includes(vtype)) return [{_journalHint:true}];
   return entries.filter(e=>e.dr>0||e.cr>0);
 }
 
@@ -1834,7 +1955,8 @@ function showEntryPreviewAndSave(){
   if(!nar)return alert('Narration is required');
   if(!dt) return alert('Date is required');
 
-  const preview=computePreviewEntries(tp,vItemLines);
+  const preview=computePreviewEntries(tp,vItemLines).filter(e=>!e._journalHint);
+  if(['Journal','Contra'].includes(tp))return alert('Journal/Contra vouchers require Manual (Accounts) mode.\nPlease switch to Manual mode to enter your Dr/Cr entries.');
   if(!preview.length)return alert('Please add at least one item line with amount');
   const totDr=preview.reduce((s,e)=>s+(e.dr||0),0);
   const totCr=preview.reduce((s,e)=>s+(e.cr||0),0);
@@ -1926,6 +2048,137 @@ function _commitZohoVoucher(id,dt,tp,narEnc,ref,partyId,due,tdsSection){
 
 
 function cancelEdit(){editVId=null;vItemLines=[{itemId:'',desc:'',qty:1,rate:0,disc:0,gstRate:18,gstType:'CGST+SGST (Intra-state)'}];vManualEntries=[{accId:'',dr:0,cr:0},{accId:'',dr:0,cr:0}];renderVouchers();}
+
+function showManualPreviewAndPost(){
+  const id=eid('v-id')?.value.trim(), dt=eid('v-date')?.value, tp=eid('v-type')?.value;
+  const nar=eid('v-nar')?.value.trim()||'', ref=eid('v-ref')?.value.trim()||'';
+  const partyId=eid('v-party')?.value||'', due=eid('v-due')?.value||'';
+  if(!nar) return alert('Narration is required');
+  if(!dt)  return alert('Date is required');
+  // Read entries live from DOM
+  const entries=[];
+  document.querySelectorAll('.m-acc-row').forEach(row=>{
+    const accId=row.querySelector('.m-acc')?.value||'';
+    const dr=parseFloat(row.querySelector('.m-dr')?.value)||0;
+    const cr=parseFloat(row.querySelector('.m-cr')?.value)||0;
+    if(accId&&(dr>0||cr>0)) entries.push({accId,dr,cr});
+  });
+  if(entries.length<2) return alert('Add at least 2 account entries');
+  const totDr=entries.reduce((s,e)=>s+(e.dr||0),0);
+  const totCr=entries.reduce((s,e)=>s+(e.cr||0),0);
+  if(Math.abs(totDr-totCr)>0.01) return alert('Entry not balanced!\nDebit: '+fmt(totDr)+' | Credit: '+fmt(totCr));
+
+  // ── Golden Rules Validation ──
+  const warnings=[];
+  const cashBankIds=state.accounts.filter(a=>a.group==='Cash & Bank').map(a=>a.id);
+  const liabilityIds=state.accounts.filter(a=>a.type==='Liability').map(a=>a.id);
+  const assetIds=state.accounts.filter(a=>a.type==='Asset').map(a=>a.id);
+  const incomeIds=state.accounts.filter(a=>a.type==='Income').map(a=>a.id);
+  const expenseIds=state.accounts.filter(a=>a.type==='Expense').map(a=>a.id);
+
+  const drAccIds=entries.filter(e=>e.dr>0).map(e=>e.accId);
+  const crAccIds=entries.filter(e=>e.cr>0).map(e=>e.accId);
+
+  if(tp==='Payment'){
+    // Payment: Bank/Cash must be CREDITED (going out), not debited
+    const bankDebited=drAccIds.some(id=>cashBankIds.includes(id));
+    const bankCredited=crAccIds.some(id=>cashBankIds.includes(id));
+    if(bankDebited && !bankCredited)
+      warnings.push('⚠️ <strong>Payment voucher:</strong> Bank/Cash account should be <strong>Credited</strong> (money going OUT), not Debited. You appear to have it reversed.');
+    // Liability should be debited (reducing what you owe)
+    const liabDebited=drAccIds.some(id=>liabilityIds.includes(id));
+    const liabCredited=crAccIds.some(id=>liabilityIds.includes(id));
+    if(liabCredited && !liabDebited)
+      warnings.push('⚠️ <strong>Payment voucher:</strong> Accounts Payable / Liability should be <strong>Debited</strong> (liability reducing), not Credited.');
+  }
+  if(tp==='Receipt'){
+    // Receipt: Bank/Cash must be DEBITED (coming in)
+    const bankDebited=drAccIds.some(id=>cashBankIds.includes(id));
+    if(!bankDebited)
+      warnings.push('⚠️ <strong>Receipt voucher:</strong> Bank/Cash account should be <strong>Debited</strong> (money coming IN).');
+    // Income/Debtor should be credited
+    const incOrDebtorCredited=crAccIds.some(id=>[...incomeIds,...assetIds].includes(id));
+    if(!incOrDebtorCredited)
+      warnings.push('⚠️ <strong>Receipt voucher:</strong> Income or Debtor account should be <strong>Credited</strong>.');
+  }
+  if(tp==='Sales'||tp==='Debit Note'){
+    // Sales: Income must be CREDITED
+    const incCredited=crAccIds.some(id=>incomeIds.includes(id));
+    if(!incCredited)
+      warnings.push('⚠️ <strong>Sales voucher:</strong> Income/Sales account should be <strong>Credited</strong> (Rule 3: Credit all incomes).');
+  }
+  if(tp==='Purchase'||tp==='Credit Note'){
+    // Purchase: Expense must be DEBITED
+    const expDebited=drAccIds.some(id=>expenseIds.includes(id));
+    if(!expDebited)
+      warnings.push('⚠️ <strong>Purchase voucher:</strong> Expense/Purchase account should be <strong>Debited</strong> (Rule 3: Debit all expenses).');
+  }
+
+  const entryRows=entries.map(e=>`
+    <tr style="font-size:12px;">
+      <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;">
+        <span style="color:#2563eb;font-family:monospace;font-weight:600;">${e.accId}</span>
+        <span style="margin-left:8px;">${aN(e.accId)||e.accId}</span>
+      </td>
+      <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right;color:#059669;font-weight:700;font-family:monospace;">${e.dr>0?fmt(e.dr):'—'}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right;color:#dc2626;font-weight:700;font-family:monospace;">${e.cr>0?fmt(e.cr):'—'}</td>
+    </tr>`).join('');
+
+  openModal('📒 Manual Journal Entry Preview — '+tp+' | '+id, `
+    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;">
+      <strong>📋 Voucher:</strong> ${id} &nbsp;|&nbsp; <strong>Date:</strong> ${fmtD(dt)} &nbsp;|&nbsp; <strong>Type:</strong> ${tp} &nbsp;|&nbsp; <strong>Narration:</strong> ${nar}
+      ${partyId?`&nbsp;|&nbsp; <strong>Party:</strong> ${partyId}`:''}
+    </div>
+    <div style="margin-bottom:12px;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:8px;">Double Entry (AS-1 Compliant)</div>
+      <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
+        <thead><tr style="background:#0f172a;color:#fff;">
+          <th style="padding:8px 10px;text-align:left;font-size:11px;">Account</th>
+          <th style="padding:8px 10px;text-align:right;font-size:11px;">Debit (Dr)</th>
+          <th style="padding:8px 10px;text-align:right;font-size:11px;">Credit (Cr)</th>
+        </tr></thead>
+        <tbody>${entryRows}</tbody>
+        <tfoot><tr style="background:#0f172a;color:#fff;font-weight:700;">
+          <td style="padding:8px 10px;font-size:12px;">TOTAL</td>
+          <td style="padding:8px 10px;text-align:right;">${fmt(totDr)}</td>
+          <td style="padding:8px 10px;text-align:right;">${fmt(totCr)}</td>
+        </tr></tfoot>
+      </table>
+    </div>
+    ${warnings.length>0?`
+    <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:12px 14px;margin-bottom:14px;">
+      <div style="font-size:12px;font-weight:700;color:#991b1b;margin-bottom:8px;">❌ Accounting Error — Golden Rules Violated</div>
+      ${warnings.map(w=>'<div style="font-size:12px;color:#7f1d1d;margin-bottom:5px;padding-left:8px;border-left:3px solid #dc2626;">'+w+'</div>').join('')}
+      <div style="font-size:11px;color:#991b1b;margin-top:8px;font-style:italic;">Please go back and correct the Dr/Cr sides before posting.</div>
+    </div>`:''}
+    <div style="background:${warnings.length>0?'#fefce8':'#ecfdf5'};border:1px solid ${warnings.length>0?'#fde68a':'#a7f3d0'};border-radius:8px;padding:9px 14px;margin-bottom:14px;font-size:12px;font-weight:700;color:${warnings.length>0?'#92400e':'#065f46'};">
+      ${warnings.length>0?'⚠️ Mathematically Balanced but Accounting Rules Violated':'✅ Entry is Balanced — Ready to Post'}
+    </div>
+    <div style="display:flex;gap:8px;">
+      ${warnings.length===0?`<button class="btn btn-s" onclick="closeModal();_postManualVoucher('${id}','${dt}','${tp}','${encodeURIComponent(nar)}','${ref}','${partyId}','${due}')">✅ Confirm &amp; Post Voucher</button>`:''}
+      <button class="btn ${warnings.length>0?'btn-p':'btn-g'}" onclick="closeModal()">✏ Go Back &amp; Edit</button>
+    </div>
+  `);
+  // Store entries for post
+  window._pendingManualEntries = entries;
+}
+
+function _postManualVoucher(id,dt,tp,narEnc,ref,partyId,due){
+  const nar=decodeURIComponent(narEnc);
+  const entries=window._pendingManualEntries||[];
+  if(!entries.length){alert('No entries found. Please try again.');return;}
+  const totDr=entries.reduce((s,e)=>s+(e.dr||0),0);
+  const vobj={id,date:dt,type:tp,narration:nar,ref,partyId,dueDate:due,entries,gstType:'',tdsSection:'',items:[],totals:{taxable:0,cgst:0,sgst:0,igst:0,tds:0,grand:totDr}};
+  if(editVId){state.vouchers=state.vouchers.map(v=>v.id===editVId?vobj:v);editVId=null;}
+  else{if(state.vouchers.find(v=>v.id===id))return alert('Voucher ID already exists');state.vouchers.push(vobj);}
+  window._pendingManualEntries=[];
+  scheduleSave();
+  showToast('✅ '+tp+' Voucher <strong>'+id+'</strong> posted successfully!');
+  vManualEntries=[{accId:'',dr:0,cr:0},{accId:'',dr:0,cr:0}];
+  editVId=null;
+  renderVouchers();
+}
+
 function saveManualVoucher(){
   const id=eid('v-id')?.value.trim(),dt=eid('v-date')?.value,tp=eid('v-type')?.value;
   const nar=eid('v-nar')?.value.trim()||'',ref=eid('v-ref')?.value.trim()||'';
@@ -2404,6 +2657,177 @@ function exportTrial(){
     ,['Account ID','Account Name','Debit (Dr)','Credit (Cr)']
     ,...rows.map(r=>[r.id,r.name,r.closingDr||0,r.closingCr||0])
     ,['','TOTAL',totDr,totCr]],'Trial Balance','Trial_Balance.xlsx');
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+//  PAGE: PARTY-WISE OUTSTANDING REPORT
+// ══════════════════════════════════════════════════════════════════
+let outTab = 'debtors';
+
+function pgOutstanding(){ outTab = outTab||'debtors'; renderOutstanding(); }
+
+function renderOutstanding(){
+  // ── Build debtor outstanding ──
+  const debtorMap = {};
+  state.debtors.forEach(d => { debtorMap[d.id] = {id:d.id, name:d.name, contact:d.contact||'', invoiced:0, received:0, vouchers:[]}; });
+
+  // ── Build creditor outstanding ──
+  const creditorMap = {};
+  state.vendors.forEach(v => { creditorMap[v.id] = {id:v.id, name:v.name, contact:v.contact||'', invoiced:0, paid:0, vouchers:[]}; });
+
+  state.vouchers.forEach(v => {
+    if(!v.partyId) return;
+    const amt = v.entries.reduce((s,e) => s + (e.dr||0), 0);
+    // Debtors: Sales & Debit Note = they owe us | Receipt & Credit Note = they paid/adjusted
+    if(['Sales','Debit Note'].includes(v.type) && debtorMap[v.partyId]){
+      debtorMap[v.partyId].invoiced += amt;
+      debtorMap[v.partyId].vouchers.push({...v, amt});
+    }
+    if(['Receipt','Credit Note'].includes(v.type) && debtorMap[v.partyId]){
+      debtorMap[v.partyId].received += amt;
+    }
+    // Creditors: Purchase & Credit Note = we owe them | Payment & Debit Note = we paid/adjusted
+    if(['Purchase','Credit Note'].includes(v.type) && creditorMap[v.partyId]){
+      creditorMap[v.partyId].invoiced += amt;
+      creditorMap[v.partyId].vouchers.push({...v, amt});
+    }
+    if(['Payment','Debit Note'].includes(v.type) && creditorMap[v.partyId]){
+      creditorMap[v.partyId].paid += amt;
+    }
+  });
+
+  const debtors = Object.values(debtorMap).map(d => ({...d, outstanding: d.invoiced - d.received})).sort((a,b) => b.outstanding - a.outstanding);
+  const creditors = Object.values(creditorMap).map(c => ({...c, outstanding: c.invoiced - c.paid})).sort((a,b) => b.outstanding - a.outstanding);
+
+  const totDebOut = debtors.reduce((s,d) => s + Math.max(d.outstanding,0), 0);
+  const totCredOut = creditors.reduce((s,c) => s + Math.max(c.outstanding,0), 0);
+  const totDebInv = debtors.reduce((s,d) => s + d.invoiced, 0);
+  const totCredInv = creditors.reduce((s,c) => s + c.invoiced, 0);
+
+  const dRows = debtors.map((d,i) => {
+    const os = d.outstanding;
+    const pct = d.invoiced > 0 ? ((d.received / d.invoiced)*100).toFixed(0) : 0;
+    const osClass = os > 0 ? 'tr-' : os < 0 ? 'tg-' : 'tm-';
+    return `<tr class="${i%2?'alt':''}">
+      <td class="fw-bold">${d.name}</td>
+      <td class="tm-" style="font-size:11px;">${d.contact||'—'}</td>
+      <td class="tr mono tg-">${fmt(d.invoiced)}</td>
+      <td class="tr mono tb-">${fmt(d.received)}</td>
+      <td class="tr mono fw-bold ${osClass}">${fmt(Math.abs(os))} ${os<0?'<span class="badge bg-" style="font-size:9px;">Advance</span>':os===0?'<span class="badge bgr" style="font-size:9px;">Cleared</span>':''}</td>
+      <td class="tc">
+        <div style="background:#e2e8f0;border-radius:20px;height:8px;width:80px;overflow:hidden;display:inline-block;">
+          <div style="background:#059669;height:100%;width:${Math.min(pct,100)}%;border-radius:20px;"></div>
+        </div>
+        <span style="font-size:10px;color:var(--tm);margin-left:4px;">${pct}%</span>
+      </td>
+      <td><button class="btn btn-g btn-sm" onclick="viewPartyLedger('debtor','${d.id}','${d.name.replace(/'/g,"\\'")}')">📖 Ledger</button></td>
+    </tr>`;
+  }).join('');
+
+  const cRows = creditors.map((c,i) => {
+    const os = c.outstanding;
+    const pct = c.invoiced > 0 ? ((c.paid / c.invoiced)*100).toFixed(0) : 0;
+    const osClass = os > 0 ? 'tr-' : os < 0 ? 'tg-' : 'tm-';
+    return `<tr class="${i%2?'alt':''}">
+      <td class="fw-bold">${c.name}</td>
+      <td class="tm-" style="font-size:11px;">${c.contact||'—'}</td>
+      <td class="tr mono tr-">${fmt(c.invoiced)}</td>
+      <td class="tr mono tb-">${fmt(c.paid)}</td>
+      <td class="tr mono fw-bold ${osClass}">${fmt(Math.abs(os))} ${os<0?'<span class="badge bg-" style="font-size:9px;">Advance</span>':os===0?'<span class="badge bgr" style="font-size:9px;">Cleared</span>':''}</td>
+      <td class="tc">
+        <div style="background:#e2e8f0;border-radius:20px;height:8px;width:80px;overflow:hidden;display:inline-block;">
+          <div style="background:#2563eb;height:100%;width:${Math.min(pct,100)}%;border-radius:20px;"></div>
+        </div>
+        <span style="font-size:10px;color:var(--tm);margin-left:4px;">${pct}%</span>
+      </td>
+      <td><button class="btn btn-g btn-sm" onclick="viewPartyLedger('creditor','${c.id}','${c.name.replace(/'/g,"\\'")}')">📖 Ledger</button></td>
+    </tr>`;
+  }).join('');
+
+  eid('content').innerHTML = `
+  <div class="sg" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px;">
+    <div class="sc sc-r"><div class="sl">Total Receivable</div><div class="sv">${fmt(totDebOut)}</div><div class="ss">${debtors.filter(d=>d.outstanding>0).length} customers pending</div></div>
+    <div class="sc sc-b"><div class="sl">Total Payable</div><div class="sv">${fmt(totCredOut)}</div><div class="ss">${creditors.filter(c=>c.outstanding>0).length} vendors pending</div></div>
+    <div class="sc sc-g"><div class="sl">Total Invoiced (Sales)</div><div class="sv">${fmt(totDebInv)}</div><div class="ss">Across all customers</div></div>
+    <div class="sc sc-o"><div class="sl">Total Invoiced (Purchase)</div><div class="sv">${fmt(totCredInv)}</div><div class="ss">Across all vendors</div></div>
+  </div>
+  <div class="tb no-print" style="margin-bottom:12px;">
+    <div class="tg">
+      <button class="t ${outTab==='debtors'?'act':''}" onclick="outTab='debtors';renderOutstanding()">🤝 Debtors / Receivable</button>
+      <button class="t ${outTab==='creditors'?'act':''}" onclick="outTab='creditors';renderOutstanding()">🏭 Creditors / Payable</button>
+    </div>
+    <button class="btn btn-s" onclick="exportOutstanding()" style="margin-left:auto;">⬇ Export Excel</button>
+  </div>
+  ${outTab==='debtors' ? `
+  <div class="card">
+    <div class="ch">🤝 Customer-wise Outstanding (Receivable)</div>
+    <table class="tbl">
+      <thead><tr><th>Customer Name</th><th>Contact</th><th class="tr">Invoiced</th><th class="tr">Received</th><th class="tr">Outstanding</th><th class="tc">Collected %</th><th>Action</th></tr></thead>
+      <tbody>${dRows || '<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--tm)">No debtors or vouchers found</td></tr>'}</tbody>
+      <tfoot><tr class="tf"><td colspan="2">TOTAL</td><td class="tr">${fmt(totDebInv)}</td><td class="tr">${fmt(debtors.reduce((s,d)=>s+d.received,0))}</td><td class="tr">${fmt(totDebOut)}</td><td colspan="2"></td></tr></tfoot>
+    </table>
+  </div>` : `
+  <div class="card">
+    <div class="ch">🏭 Vendor-wise Outstanding (Payable)</div>
+    <table class="tbl">
+      <thead><tr><th>Vendor Name</th><th>Contact</th><th class="tr">Invoiced</th><th class="tr">Paid</th><th class="tr">Outstanding</th><th class="tc">Paid %</th><th>Action</th></tr></thead>
+      <tbody>${cRows || '<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--tm)">No vendors or vouchers found</td></tr>'}</tbody>
+      <tfoot><tr class="tf"><td colspan="2">TOTAL</td><td class="tr">${fmt(totCredInv)}</td><td class="tr">${fmt(creditors.reduce((s,c)=>s+c.paid,0))}</td><td class="tr">${fmt(totCredOut)}</td><td colspan="2"></td></tr></tfoot>
+    </table>
+  </div>`}`;
+}
+
+function viewPartyLedger(type, partyId, partyName){
+  const vouchers = state.vouchers.filter(v => v.partyId === partyId);
+  if(!vouchers.length){ alert('No vouchers found for '+partyName); return; }
+  const isDebtor = type === 'debtor';
+  let running = 0;
+  const rows = [...vouchers].sort((a,b) => a.date.localeCompare(b.date)).map((v,i) => {
+    const amt = v.entries.reduce((s,e) => s+(e.dr||0), 0);
+    const isDebit = isDebtor ? ['Sales','Debit Note'].includes(v.type) : ['Purchase','Credit Note'].includes(v.type);
+    if(isDebit) running += amt; else running -= amt;
+    return `<tr class="${i%2?'alt':''}">
+      <td>${fmtD(v.date)}</td>
+      <td class="mono tb-">${v.id}</td>
+      <td><span class="badge ${bcol(v.type)}">${v.type}</span></td>
+      <td class="tm-">${v.narration}</td>
+      <td class="tr tg-">${isDebit?fmt(amt):''}</td>
+      <td class="tr tr-">${!isDebit?fmt(amt):''}</td>
+      <td class="tr fw-bold ${running>0?'tr-':running<0?'tg-':'tm-'}">${fmt(Math.abs(running))} ${running>0?(isDebtor?'Receivable':'Payable'):running<0?'Advance':'NIL'}</td>
+    </tr>`;
+  }).join('');
+  openModal('📖 '+partyName+' — Party Ledger', `
+    <table class="tbl" style="width:100%;">
+      <thead><tr><th>Date</th><th>Voucher</th><th>Type</th><th>Narration</th><th class="tr">${isDebtor?'Invoice/Dr':'Purchase/Cr'}</th><th class="tr">${isDebtor?'Receipt/Cr':'Payment/Dr'}</th><th class="tr">Balance</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr class="tf"><td colspan="4">CLOSING BALANCE</td><td colspan="2"></td><td class="tr">${fmt(Math.abs(running))} ${running>0?(isDebtor?'Receivable':'Payable'):running<0?'Advance':'NIL'}</td></tr></tfoot>
+    </table>
+    <div style="margin-top:12px;display:flex;gap:8px;">
+      <button class="btn btn-g" onclick="closeModal()">Close</button>
+    </div>
+  `);
+}
+
+function exportOutstanding(){
+  const debtorMap = {};
+  state.debtors.forEach(d => { debtorMap[d.id] = {name:d.name, invoiced:0, received:0}; });
+  const creditorMap = {};
+  state.vendors.forEach(v => { creditorMap[v.id] = {name:v.name, invoiced:0, paid:0}; });
+  state.vouchers.forEach(v => {
+    if(!v.partyId) return;
+    const amt = v.entries.reduce((s,e) => s+(e.dr||0), 0);
+    if(['Sales','Debit Note'].includes(v.type) && debtorMap[v.partyId]) debtorMap[v.partyId].invoiced += amt;
+    if(['Receipt','Credit Note'].includes(v.type) && debtorMap[v.partyId]) debtorMap[v.partyId].received += amt;
+    if(['Purchase','Credit Note'].includes(v.type) && creditorMap[v.partyId]) creditorMap[v.partyId].invoiced += amt;
+    if(['Payment','Debit Note'].includes(v.type) && creditorMap[v.partyId]) creditorMap[v.partyId].paid += amt;
+  });
+  const dRows = Object.values(debtorMap).map(d => [d.name, d.invoiced, d.received, d.invoiced - d.received]);
+  const cRows = Object.values(creditorMap).map(c => [c.name, c.invoiced, c.paid, c.invoiced - c.paid]);
+  exportMultiXLS([
+    {name:'Debtors Outstanding', data:[[state.company,'','',''],['DEBTORS OUTSTANDING - FY '+state.fy,'','',''],['Customer','Invoiced','Received','Outstanding'],...dRows]},
+    {name:'Creditors Outstanding', data:[[state.company,'','',''],['CREDITORS OUTSTANDING - FY '+state.fy,'','',''],['Vendor','Invoiced','Paid','Outstanding'],...cRows]}
+  ], `Outstanding_Report_FY${state.fy}.xlsx`);
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -4178,6 +4602,8 @@ async function init(){
     if(saved)state={...DEFAULT_STATE,...saved};
     // Check if any users exist
     const users=await DB.getAll('users');
+    // ── Always sync state.appUsers from live DB to prevent stale data ──
+    if(users&&users.length>0) state.appUsers=users;
     if(!users||users.length===0){
       // First launch — show setup
       document.getElementById('login-form-wrap').classList.add('hidden');
