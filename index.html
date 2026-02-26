@@ -7,7 +7,6 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap');
 :root{--bg:#f0f2f5;--sidebar:#0f172a;--primary:#2563eb;--pd:#1d4ed8;--ok:#059669;--bad:#dc2626;--warn:#d97706;--sur:#fff;--bdr:#e2e8f0;--txt:#1e293b;--tm:#64748b;--tl:#94a3b8;--mono:'IBM Plex Mono',monospace;--font:'IBM Plex Sans',sans-serif;}
@@ -231,12 +230,23 @@ input[type=number]{-moz-appearance:textfield;}
   #content{padding:0;}
   body{height:auto;overflow:visible;}
 }
+
+/* ── OTP RESET PASSWORD SCREEN ── */
+#otp-wrap{position:fixed;inset:0;background:linear-gradient(135deg,#0f172a 0%,#1e3a6e 60%,#0f172a 100%);display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;}
+.otp-box{background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.13);border-radius:20px;padding:40px 36px;width:400px;max-width:95vw;}
+.otp-digits{display:flex;gap:10px;justify-content:center;margin:20px 0;}
+.otp-digit{width:48px;height:56px;border-radius:10px;border:1.5px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font-size:22px;font-weight:700;text-align:center;font-family:var(--mono);outline:none;transition:border .15s;}
+.otp-digit:focus{border-color:#3b82f6;background:rgba(59,130,246,.15);}
+.otp-step{display:none;}.otp-step.active{display:block;}
+.otp-timer{font-size:11px;color:#64748b;text-align:center;margin-top:8px;}
+.otp-timer span{color:#3b82f6;font-weight:700;}
+
 </style>
 </head>
 <body>
 
 <!-- ══ COMPANY SELECT ══ -->
-<div id="co-select-wrap" class="hidden">
+<div id="co-select-wrap">
   <div class="db-badge">☁️ Supabase Cloud Storage — Multi-Company Edition</div>
   <div class="login-box co-select-box">
     <div class="login-logo" style="margin-bottom:20px;">
@@ -245,8 +255,14 @@ input[type=number]{-moz-appearance:textfield;}
       <div class="login-logo-sub">Select a company to continue</div>
     </div>
     <div id="co-list-wrap">
-      <div class="co-loading" id="co-loading">⏳ Loading companies…</div>
-      <div class="co-grid" id="co-grid" style="display:none;"></div>
+      <div class="co-loading" id="co-loading" style="display:block;">⏳ Loading companies…</div>
+      <div class="co-grid" id="co-grid" style="display:grid;">
+        <div class="co-new-card" onclick="openNewCoWizard()">
+          <div class="co-new-icon">➕</div>
+          <div class="co-new-label">Create New Company</div>
+          <div class="co-new-sub">Set up a separate entity</div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -273,7 +289,76 @@ input[type=number]{-moz-appearance:textfield;}
       </div>
       <button class="login-btn" onclick="doLogin()">Sign In →</button>
       <button class="login-btn-sec" onclick="backToCompanySelect()">← Back to Company List</button>
+      <div style="text-align:center;margin-top:14px;">
+        <span onclick="openOtpScreen()" style="color:#60a5fa;font-size:12px;cursor:pointer;text-decoration:underline;">🔑 Forgot Password? Reset via OTP</span>
+      </div>
     </div>
+  </div>
+</div>
+
+
+<!-- ══ OTP PASSWORD RESET SCREEN ══ -->
+<div id="otp-wrap" class="hidden">
+  <div class="login-logo" style="margin-bottom:20px;">
+    <div class="login-logo-icon">🔐</div>
+    <div class="login-logo-name">Reset Password</div>
+    <div class="login-logo-sub">AccounTally Pro</div>
+  </div>
+  <div class="otp-box">
+    <div id="otp-error" class="login-error"></div>
+
+    <!-- Step 1: Enter username to look up mobile -->
+    <div class="otp-step active" id="otp-s1">
+      <div style="color:#94a3b8;font-size:12px;margin-bottom:20px;line-height:1.6;">
+        Enter your username. We'll send an OTP to the mobile number registered with your account.
+      </div>
+      <div class="login-field">
+        <label class="login-label">Username</label>
+        <input class="login-input" id="otp-username" placeholder="Enter your username" autocomplete="off">
+      </div>
+      <div class="login-field" id="otp-mobile-display" style="display:none;">
+        <div style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);border-radius:10px;padding:10px 14px;color:#93c5fd;font-size:12px;">
+          📱 OTP will be sent to: <strong id="otp-masked-mobile"></strong>
+        </div>
+      </div>
+      <button class="login-btn" onclick="otpLookupUser()">Send OTP →</button>
+      <button class="login-btn-sec" onclick="closeOtpScreen()">← Back to Login</button>
+    </div>
+
+    <!-- Step 2: Enter OTP -->
+    <div class="otp-step" id="otp-s2">
+      <div style="color:#94a3b8;font-size:12px;margin-bottom:6px;text-align:center;">
+        Enter the 6-digit OTP sent to <strong id="otp-sent-to" style="color:#93c5fd;"></strong>
+      </div>
+      <div class="otp-digits">
+        <input class="otp-digit" id="od1" maxlength="1" type="tel" oninput="otpDigitInput(this,'od2')" onkeydown="otpDigitKey(event,this,'','od1')">
+        <input class="otp-digit" id="od2" maxlength="1" type="tel" oninput="otpDigitInput(this,'od3')" onkeydown="otpDigitKey(event,this,'od1','od2')">
+        <input class="otp-digit" id="od3" maxlength="1" type="tel" oninput="otpDigitInput(this,'od4')" onkeydown="otpDigitKey(event,this,'od2','od3')">
+        <input class="otp-digit" id="od4" maxlength="1" type="tel" oninput="otpDigitInput(this,'od5')" onkeydown="otpDigitKey(event,this,'od3','od4')">
+        <input class="otp-digit" id="od5" maxlength="1" type="tel" oninput="otpDigitInput(this,'od6')" onkeydown="otpDigitKey(event,this,'od4','od5')">
+        <input class="otp-digit" id="od6" maxlength="1" type="tel" oninput="otpDigitInput(this,'')"    onkeydown="otpDigitKey(event,this,'od5','od6')">
+      </div>
+      <div class="otp-timer">Expires in <span id="otp-timer-val">10:00</span> &nbsp;|&nbsp; <span style="color:#3b82f6;cursor:pointer;" onclick="otpResend()">Resend OTP</span></div>
+      <button class="login-btn" style="margin-top:16px;" onclick="otpVerify()">Verify OTP →</button>
+      <button class="login-btn-sec" onclick="otpGoStep(1)">← Change Username</button>
+    </div>
+
+    <!-- Step 3: Set new password -->
+    <div class="otp-step" id="otp-s3">
+      <div style="color:#94a3b8;font-size:12px;margin-bottom:20px;">
+        ✅ Identity verified. Set your new password below.
+      </div>
+      <div class="login-field">
+        <label class="login-label">New Password</label>
+        <input class="login-input" id="otp-newpass" type="password" placeholder="Minimum 6 characters">
+      </div>
+      <div class="login-field">
+        <label class="login-label">Confirm New Password</label>
+        <input class="login-input" id="otp-newpass2" type="password" placeholder="Re-enter new password">
+      </div>
+      <button class="login-btn" onclick="otpSetNewPassword()">🔐 Save New Password →</button>
+    </div>
+
   </div>
 </div>
 
@@ -345,6 +430,10 @@ input[type=number]{-moz-appearance:textfield;}
       <div class="login-field">
         <label class="login-label">Confirm Password *</label>
         <input class="login-input" id="nc-pass2" type="password" placeholder="Re-enter password">
+      </div>
+      <div class="login-field">
+        <label class="login-label">Mobile Number * <span style="font-size:10px;opacity:.7;">(for OTP password reset)</span></label>
+        <input class="login-input" id="nc-mobile" type="tel" placeholder="+91 9876543210" maxlength="13">
       </div>
       <button class="login-btn" onclick="ncNext(2)">Next: Final Settings →</button>
       <button class="login-btn-sec" onclick="ncBack(2)">← Back</button>
@@ -559,47 +648,52 @@ function getSupa(){
   return supa;
 }
 
-// Map app user object (camelCase) ↔ DB row (snake_case)
-// Note: app_users table only has: username, id, password_hash, role — NO full_name column
-function userToRow(u){ return {username:u.username, id:u.id||'u1', password_hash:u.passwordHash, role:u.role||'admin'}; }
-function rowToUser(r){ return {username:r.username, id:r.id, passwordHash:r.password_hash, role:r.role, fullName:r.username}; }
+// ── v11: Supabase Auth — passwords managed by Supabase, NOT stored in DB ──
+// app_users: username, user_id (uuid→auth.users), company_id, role
+function rowToUser(r){ return {username:r.username, id:r.company_id+'_u1', companyId:r.company_id, passwordHash:'', role:r.role, fullName:r.username, mobile:r.mobile||''}; }
 
 const DB = {
   async open(){ return true; },
   async get(store, key){
-    const db = getSupa();
-    const tbl = store==='users' ? 'app_users' : 'app_data';
-    const col = store==='users' ? 'username' : 'id';
-    const {data,error} = await db.from(tbl).select('*').eq(col,key).maybeSingle();
-    if(error) throw error;
-    if(!data) return undefined;
-    return store==='users' ? rowToUser(data) : data.state;
+    const db=getSupa();
+    if(store==='users'){
+      const {data,error}=await db.from('app_users').select('*').eq('username',key).maybeSingle();
+      if(error) throw error;
+      return data ? rowToUser(data) : undefined;
+    } else {
+      const {data,error}=await db.from('app_data').select('*').eq('id',key).maybeSingle();
+      if(error) throw error;
+      return data ? data.state : undefined;
+    }
   },
   async set(store, key, val){
-    const db = getSupa();
-    const tbl = store==='users' ? 'app_users' : 'app_data';
+    const db=getSupa();
     if(store==='users'){
-      const row = userToRow(val);
-      const {error} = await db.from(tbl).upsert(row, {onConflict:'username'});
+      const row={username:val.username, company_id:val.companyId||val.company_id||state.companyId||'', role:val.role||'viewer'};
+      const {error}=await db.from('app_users').upsert(row,{onConflict:'username'});
       if(error) throw error;
     } else {
-      const {error} = await db.from(tbl).upsert({id:key, state:val}, {onConflict:'id'});
+      const {error}=await db.from('app_data').upsert({id:key,state:val},{onConflict:'id'});
       if(error) throw error;
     }
   },
   async getAll(store){
-    const db = getSupa();
-    const tbl = store==='users' ? 'app_users' : 'app_data';
-    const {data,error} = await db.from(tbl).select('*');
-    if(error) throw error;
-    if(store==='users') return (data||[]).map(rowToUser);
-    return data||[];
+    const db=getSupa();
+    if(store==='users'){
+      const {data,error}=await db.from('app_users').select('*');
+      if(error) throw error;
+      return (data||[]).map(rowToUser);
+    } else {
+      const {data,error}=await db.from('app_data').select('*');
+      if(error) throw error;
+      return data||[];
+    }
   },
   async del(store, key){
-    const db = getSupa();
-    const tbl = store==='users' ? 'app_users' : 'app_data';
-    const col = store==='users' ? 'username' : 'id';
-    const {error} = await db.from(tbl).delete().eq(col,key);
+    const db=getSupa();
+    const tbl=store==='users'?'app_users':'app_data';
+    const col=store==='users'?'username':'id';
+    const {error}=await db.from(tbl).delete().eq(col,key);
     if(error) throw error;
   }
 };
@@ -608,41 +702,11 @@ const DB = {
 //  SECURITY LAYER
 // ══════════════════════════════════════════════════════════════════
 
-// ── 1. PASSWORD HASHING (bcrypt, cost=10) ──
-const BCRYPT_ROUNDS = 10;
-
-async function hashPassword(plain){
-  return new Promise((res,rej)=>{
-    if(typeof dcodeIO==='undefined'||!dcodeIO.bcrypt){
-      crypto.subtle.digest('SHA-256',new TextEncoder().encode(plain))
-        .then(buf=>res(Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('')))
-        .catch(rej);
-      return;
-    }
-    dcodeIO.bcrypt.hash(plain, BCRYPT_ROUNDS, (err,hash)=>{ if(err) rej(err); else res(hash); });
-  });
-}
-
-async function verifyPassword(plain, storedHash){
-  if(!storedHash) return false;
-  if(!storedHash.startsWith('$2b$') && !storedHash.startsWith('$2a$')){
-    const sha = await sha256legacy(plain);
-    return sha === storedHash;
-  }
-  return new Promise((res,rej)=>{
-    if(typeof dcodeIO==='undefined'||!dcodeIO.bcrypt){
-      sha256legacy(plain).then(h=>res(h===storedHash)).catch(rej);
-      return;
-    }
-    dcodeIO.bcrypt.compare(plain, storedHash, (err,result)=>{ if(err) rej(err); else res(result); });
-  });
-}
-
+// ── 1. LEGACY HASH (sha256legacy — used for e-Invoice IRN only) ──
 async function sha256legacy(str){
   const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str));
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-async function sha256(str){ return hashPassword(str); }
 
 // ── 2. RATE LIMITING (lockout after 5 failed attempts for 15 mins) ──
 const _loginAttempts = {};
@@ -716,17 +780,19 @@ let _selectedCompanyId=null;
 //  COMPANY REGISTRY
 // ══════════════════════════════════════════════════════════════════
 async function getCompanyRegistry(){
-  try{const reg=await DB.get('data','companies_registry');return Array.isArray(reg)?reg:[];}catch(e){return[];}
+  try{
+    const {data,error}=await getSupa().from('companies_registry').select('*').order('created_at',{ascending:true});
+    if(error) throw error;
+    return (data||[]).map(r=>({companyId:r.company_id,name:r.name,gstin:r.gstin||'',fy:r.fy||'2025-26',createdAt:r.created_at}));
+  }catch(e){console.error('Registry load',e);return[];}
 }
-async function saveCompanyRegistry(reg){
-  try{await DB.set('data','companies_registry',reg);}catch(e){console.error('Registry save',e);}
-}
+async function saveCompanyRegistry(reg){ /* no-op v11 */ }
 async function registerCompany(companyId,name,gstin,fy){
-  const reg=await getCompanyRegistry();
-  const idx=reg.findIndex(c=>c.companyId===companyId);
-  const entry={companyId,name,gstin:gstin||'',fy:fy||'2025-26',createdAt:new Date().toISOString()};
-  if(idx>=0)reg[idx]=entry;else reg.push(entry);
-  await saveCompanyRegistry(reg);
+  const {error}=await getSupa().from('companies_registry').upsert(
+    {company_id:companyId,name:name||'My Company',gstin:gstin||'',fy:fy||'2025-26'},
+    {onConflict:'company_id'}
+  );
+  if(error) throw new Error('Could not register company: '+error.message);
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -740,60 +806,25 @@ async function showCompanySelectScreen(){
   document.getElementById('app').classList.add('hidden');
   const grid=document.getElementById('co-grid');
   const loading=document.getElementById('co-loading');
-  loading.style.display='block'; grid.style.display='none';
+  // Always show ➕ immediately so user is never stuck
+  if(grid){ grid.style.display='grid'; grid.innerHTML=buildNewCoCard(); }
+  if(loading){ loading.textContent='⏳ Loading companies…'; loading.style.display='block'; }
   try{
-    let companies=await getCompanyRegistry();
-    if(!companies||companies.length===0){
-      // Scan users to auto-build registry (migration from v7 or earlier)
-      const users=await DB.getAll('users');
-      const seen=new Set();
-      for(const u of users){
-        if(u.id&&u.id.includes('_')){
-          // v7+ format: COMPID_u1
-          const cid=u.id.split('_')[0];
-          if(!seen.has(cid)){
-            seen.add(cid);
-            try{
-              const st=await DB.get('data',cid);
-              if(st) companies.push({companyId:cid,name:st.company||cid,gstin:st.gstin||'',fy:st.fy||'2025-26',createdAt:''});
-            }catch(_){}
-          }
-        } else {
-          // Legacy format (id='u1' or similar, no companyId prefix)
-          // Try to load from legacy 'state' key
-          const LEGACY_ID='__legacy__';
-          if(!seen.has(LEGACY_ID)){
-            seen.add(LEGACY_ID);
-            let legSt=null;
-            try{legSt=await DB.get('data','state');}catch(_){}
-            if(!legSt){
-              // Try looking up state under username as key
-              try{legSt=await DB.get('data',u.username);}catch(_){}
-            }
-            const coName=legSt?.company||'My Company (Legacy)';
-            const coId=legSt?.companyId||(LEGACY_ID);
-            companies.push({companyId:coId,name:coName,gstin:legSt?.gstin||'',fy:legSt?.fy||'2025-26',createdAt:'',_legacy:true,_legacyUsers:[]});
-          }
-          // Add this legacy user to the entry
-          const legEntry=companies.find(c=>c._legacy);
-          if(legEntry&&!legEntry._legacyUsers.includes(u.username)){legEntry._legacyUsers.push(u.username);}
-        }
-      }
-      if(companies.length>0) await saveCompanyRegistry(companies.map(c=>{const e={...c};delete e._legacy;delete e._legacyUsers;return e;}));
+    // companies_registry has public SELECT — no auth needed
+    const {data,error}=await Promise.race([
+      getSupa().from('companies_registry').select('*').order('created_at',{ascending:true}),
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),6000))
+    ]);
+    if(loading) loading.style.display='none';
+    if(error) throw error;
+    if(data && data.length>0){
+      const companies=data.map(r=>({companyId:r.company_id,name:r.name,gstin:r.gstin||'',fy:r.fy||'2025-26'}));
+      if(grid) grid.innerHTML=companies.map((co,i)=>buildCoCard(co,i)).join('')+buildNewCoCard();
     }
-    loading.style.display='none';
-    grid.style.display='grid';
-    if(companies.length===0){
-      grid.innerHTML=buildNewCoCard();
-    } else {
-      grid.innerHTML=companies.map((co,i)=>buildCoCard(co,i)).join('')+buildNewCoCard();
-    }
+    // if data.length===0, only ➕ shows — correct behaviour
   }catch(e){
-    loading.textContent='⚠️ Connection error. Check your internet and refresh.';
-    loading.style.display='block';
-    grid.innerHTML=buildNewCoCard();
-    grid.style.display='grid';
-    console.error('Company load error',e);
+    if(loading){ loading.textContent='⚠️ Could not load companies: '+e.message; loading.style.display='block'; }
+    console.warn('Company list load error:',e.message);
   }
 }
 
@@ -837,72 +868,53 @@ async function doLogin(){
   const p=document.getElementById('li-pass').value;
   if(!u||!p){showLoginErr('Please enter username and password.');return;}
   if(!_selectedCompanyId){showLoginErr('Please select a company first.');backToCompanySelect();return;}
-
-  // ── Rate limit check ──
   const rl=checkRateLimit(u);
   if(!rl.allowed){showLoginErr(rl.message);return;}
-
   const btn=document.querySelector('#login-form-wrap .login-btn');
   if(btn){btn.disabled=true;btn.textContent='Signing in…';}
   try{
-    const users=await DB.getAll('users');
-    if(!users||users.length===0){showLoginErr('No users found. Create a company first.');return;}
-    const prefix=_selectedCompanyId+'_';
-    const isLegacyCompany=_selectedCompanyId==='__legacy__';
+    // Step 1: Supabase Auth sign-in
+    // Try new format first (username_companyid@accountally.app),
+    // then fall back to old format (username@accountally.app) for existing users
+    const emailNew = u.toLowerCase()+'_'+_selectedCompanyId.toLowerCase()+'@accountally.app';
+    const emailOld = u.toLowerCase()+'@accountally.app';
+    let authData=null, authErr=null;
 
-    // 1. Find user by username + company prefix (bcrypt verify)
-    const candidates=users.filter(x=>x.username.toLowerCase()===u.toLowerCase()&&x.id&&x.id.startsWith(prefix));
-    let found=null;
-    for(const c of candidates){
-      if(await verifyPassword(p,c.passwordHash)){found=c;break;}
-    }
-
-    // 2. Legacy company match
-    if(!found&&isLegacyCompany){
-      const legCandidates=users.filter(x=>x.username.toLowerCase()===u.toLowerCase()&&(!x.id||!x.id.includes('_')));
-      for(const c of legCandidates){
-        if(await verifyPassword(p,c.passwordHash)){found=c;break;}
-      }
-      if(found){
-        const newCid='C'+Date.now().toString(36).toUpperCase().slice(-6);
-        let legSt=null;
-        try{legSt=await DB.get('data','state');}catch(_){}
-        if(!legSt)try{legSt=await DB.get('data',found.username);}catch(_){}
-        if(legSt){legSt.companyId=newCid;await DB.set('data',newCid,legSt);}
-        found={...found,id:newCid+'_u1'};
-        await DB.set('users',found.username,{id:newCid+'_u1',username:found.username,passwordHash:found.passwordHash,role:found.role});
-        _selectedCompanyId=newCid;
-        await registerCompany(newCid,legSt?.company||'My Company',legSt?.gstin||'',legSt?.fy||'2025-26');
+    const res1 = await getSupa().auth.signInWithPassword({email:emailNew, password:p});
+    if(!res1.error){
+      authData = res1.data;
+    } else {
+      // Fall back to old format
+      const res2 = await getSupa().auth.signInWithPassword({email:emailOld, password:p});
+      if(!res2.error){
+        authData = res2.data;
+      } else {
+        authErr = res2.error;
       }
     }
 
-    // 3. Fallback cross-company check
-    if(!found){
-      const allByName=users.filter(x=>x.username.toLowerCase()===u.toLowerCase());
-      for(const c of allByName){
-        if(await verifyPassword(p,c.passwordHash)){
-          const userCid=c.id&&c.id.includes('_')?c.id.split('_')[0]:null;
-          if(userCid&&userCid!==_selectedCompanyId){
-            recordFailedLogin(u);
-            showLoginErr('This user belongs to a different company. Please select the correct company.');
-            return;
-          }
-        }
-      }
+    if(authErr || !authData){
       recordFailedLogin(u);
-      // Generic error — never reveal whether username or password is wrong (security best practice)
       showLoginErr('Invalid username or password.');
       return;
     }
-
-    clearFailedLogins(u);
-    // ── If old SHA-256 hash detected, upgrade to bcrypt transparently ──
-    if(found.passwordHash && !found.passwordHash.startsWith('$2b$') && !found.passwordHash.startsWith('$2a$')){
-      const newHash=await hashPassword(p);
-      await DB.set('users',found.username,{...userToRow(found),password_hash:newHash});
-      found={...found,passwordHash:newHash};
+    // Step 2: Fetch app_users row (RLS: only own company visible)
+    const {data:userRow,error:rowErr}=await getSupa().from('app_users')
+      .select('*').eq('username',u.toLowerCase()).maybeSingle();
+    if(rowErr||!userRow){
+      await getSupa().auth.signOut();
+      showLoginErr('User account not found. Contact your admin.');
+      return;
     }
-    await doLoginSuccess(found,_selectedCompanyId);
+    // Step 3: Confirm correct company selected
+    if(userRow.company_id!==_selectedCompanyId){
+      await getSupa().auth.signOut();
+      recordFailedLogin(u);
+      showLoginErr('This user belongs to a different company. Please select the correct company.');
+      return;
+    }
+    clearFailedLogins(u);
+    await doLoginSuccess(rowToUser(userRow), _selectedCompanyId);
   }catch(e){
     console.error('Login error:',e);
     showLoginErr('Connection error: '+(e.message||'Could not reach server. Check internet.'));
@@ -912,22 +924,25 @@ async function doLogin(){
 }
 
 async function doLoginSuccess(found,companyId){
-  // Try to load state: first by companyId, then by 'state' key (legacy), then blank
   let savedState=null;
   try{savedState=await DB.get('data',companyId);}catch(_){}
-  if(!savedState&&(!companyId||companyId==='__legacy__')){
-    try{savedState=await DB.get('data','state');}catch(_){}
-  }
   if(savedState){state={...DEFAULT_STATE,...savedState,companyId};}
-  else{state={...DEFAULT_STATE,companyId};}
-  if(state.appUsers)state.appUsers=state.appUsers.filter(x=>x&&x.passwordHash&&x.username);
-  // Ensure companyId is set in state
-  if(!state.companyId)state.companyId=companyId;
+  else{
+    // No app_data row yet — use defaults (happens on very first login)
+    state={...DEFAULT_STATE,companyId};
+    // Fetch company name from registry to populate state
+    try{
+      const {data:reg}=await getSupa().from('companies_registry')
+        .select('name,gstin,fy').eq('company_id',companyId).maybeSingle();
+      if(reg){ state.company=reg.name||state.company; state.gstin=reg.gstin||''; state.fy=reg.fy||state.fy; }
+    }catch(_){}
+  }
+  if(state.appUsers)state.appUsers=state.appUsers.filter(x=>x&&x.username);
+  state.companyId=companyId;
   currentUser=found;
   _selectedCompanyId=companyId;
   resetSessionTimer();
-  // Delay logAudit slightly so state/currentUser are fully set
-  setTimeout(()=>logAudit('Login', `User ${found.username} logged in`),100);
+  setTimeout(()=>logAudit('Login',`User ${found.username} logged in`),100);
   sessionStorage.setItem('loggedInUser',found.username);
   sessionStorage.setItem('companyId',companyId);
   document.getElementById('login-wrap').classList.add('hidden');
@@ -988,7 +1003,7 @@ function ncShowStep(n){
 function ncNext(from){
   if(from===1){
     const name=(document.getElementById('nc-name')?.value||'').trim();
-    if(!name){alert('Company name is required.');return;}
+    if(!name){showAlert('Company name is required.');return;}
     _ncData.name=name;
     _ncData.gstin=(document.getElementById('nc-gstin')?.value||'').toUpperCase().trim();
     _ncData.state=document.getElementById('nc-state')?.value||'Maharashtra';
@@ -999,10 +1014,13 @@ function ncNext(from){
     const u=(document.getElementById('nc-user')?.value||'').trim();
     const p=document.getElementById('nc-pass')?.value||'';
     const p2=document.getElementById('nc-pass2')?.value||'';
-    if(!u){alert('Admin username required.');return;}
-    if(!p||p.length<6){alert('Password must be at least 6 characters.');return;}
-    if(p!==p2){alert('Passwords do not match.');return;}
+    if(!u){showAlert('Admin username required.');return;}
+    if(!p||p.length<6){showAlert('Password must be at least 6 characters.');return;}
+    if(p!==p2){showAlert('Passwords do not match.');return;}
     _ncData.username=u;_ncData.password=p;
+    const mob=(document.getElementById('nc-mobile')?.value||'').trim();
+    if(!mob){showAlert('Mobile number is required for OTP password reset.');return;}
+    _ncData.mobile=mob;
     ncShowStep(3);
   }
 }
@@ -1016,31 +1034,81 @@ async function doCreateCompany(){
   const errEl=document.getElementById('nc-error');
   if(btn){btn.disabled=true;btn.textContent='Creating…';}
   if(errEl)errEl.style.display='none';
+
+  const companyId='C'+Date.now().toString(36).toUpperCase().slice(-6);
+  const username=_ncData.username.toLowerCase();
+  const email=username+'_'+companyId.toLowerCase()+'@accountally.app';
+  let authUserId=null;
+
   try{
-    const h=await sha256(_ncData.password);
-    const companyId='C'+Date.now().toString(36).toUpperCase().slice(-6);
-    await DB.set('users',_ncData.username,{id:companyId+'_u1',username:_ncData.username,passwordHash:h,role:'admin'});
+    // ── Step 1: Supabase Auth signup ──────────────────────────────
+    const {data:authData,error:authErr}=await getSupa().auth.signUp({email,password:_ncData.password});
+
+    if(authErr){
+      // If email already registered — sign in to get existing user_id
+      // (happens when a previous creation attempt partially failed)
+      if(authErr.message.includes('already registered') || authErr.message.includes('already been registered')){
+        const {data:signinData,error:signinErr}=await getSupa().auth.signInWithPassword({email,password:_ncData.password});
+        if(signinErr) throw new Error('Username already exists and password is wrong. Use a different username or the correct password.');
+        authUserId=signinData.user.id;
+        // Check if this user already has a company
+        const {data:existingUser}=await getSupa().from('app_users').select('company_id').eq('user_id',authUserId).maybeSingle();
+        if(existingUser) throw new Error('Username "'+username+'" already exists with another company. Please use a different username.');
+      } else {
+        throw new Error('Auth signup failed: '+authErr.message);
+      }
+    } else {
+      if(!authData.user) throw new Error('Signup failed — go to Supabase → Auth → Settings → Email and turn OFF "Enable email confirmations".');
+      authUserId=authData.user.id;
+      // Set session immediately so RLS passes on next inserts
+      if(authData.session) await getSupa().auth.setSession(authData.session);
+    }
+
+    // ── Step 2: Insert companies_registry FIRST (FK parent) ──────
+    const {error:regErr}=await getSupa().from('companies_registry').upsert(
+      {company_id:companyId, name:_ncData.name, gstin:_ncData.gstin||'', fy:_ncData.fy||'2025-26'},
+      {onConflict:'company_id'}
+    );
+    if(regErr) throw new Error('Could not create company: '+regErr.message);
+
+    // ── Step 3: Insert app_users (FK child) ──────────────────────
+    const mobile=(_ncData.mobile||'').trim();
+    const {error:userErr}=await getSupa().from('app_users').insert({
+      username: username,
+      user_id: authUserId,
+      company_id: companyId,
+      role: 'admin',
+      mobile: mobile
+    });
+    if(userErr){
+      // Rollback: remove company we just created
+      await getSupa().from('companies_registry').delete().eq('company_id',companyId);
+      throw new Error('Could not save user profile: '+userErr.message);
+    }
+
+    // ── Step 4: Build and save company state ──────────────────────
     const fyParts=(_ncData.fy||'2025-26').split('-');
     const fyYear=parseInt(fyParts[0]);
     const ns=JSON.parse(JSON.stringify(DEFAULT_STATE));
-    ns.company=_ncData.name; ns.gstin=_ncData.gstin; ns.companyState=_ncData.state;
+    ns.company=_ncData.name; ns.gstin=_ncData.gstin||''; ns.companyState=_ncData.state||'Maharashtra';
     ns.fy=_ncData.fy; ns.fyStart=`${fyYear}-04-01`; ns.fyEnd=`${fyYear+1}-03-31`;
-    ns.tan=_ncData.tan; ns.currency=currency; ns.accountingMethod=method; ns.companyId=companyId;
-    ns.appUsers=[{username:_ncData.username,role:'admin',fullName:_ncData.username,createdAt:new Date().toISOString(),passwordHash:h}];
+    ns.tan=_ncData.tan||''; ns.currency=currency; ns.accountingMethod=method; ns.companyId=companyId;
+    ns.appUsers=[{username,role:'admin',fullName:username,createdAt:new Date().toISOString()}];
     if(loadSample)injectSampleData(ns);
     state=ns;
-    await registerCompany(companyId,_ncData.name,_ncData.gstin,_ncData.fy);
     _selectedCompanyId=companyId;
     sessionStorage.setItem('companyId',companyId);
+    sessionStorage.setItem('loggedInUser',username);
     await saveState();
-    currentUser={id:companyId+'_u1',username:_ncData.username,passwordHash:h,role:'admin'};
-    sessionStorage.setItem('loggedInUser',_ncData.username);
+
+    // ── Step 5: Set current user and launch app ───────────────────
+    currentUser={id:companyId+'_u1',username,passwordHash:'',role:'admin',companyId};
     const cname=_ncData.name;
     closeNewCoWizard();
     document.getElementById('co-select-wrap').classList.add('hidden');
     document.getElementById('login-wrap').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
-    document.getElementById('usr-btn').textContent=`👑 ${_ncData.username||currentUser.username} ▾`;
+    document.getElementById('usr-btn').textContent=`👑 ${username} ▾`;
     document.getElementById('sb-company').textContent=state.company;
     document.getElementById('sb-fy').textContent='FY '+state.fy;
     document.getElementById('top-fy').textContent='FY '+state.fy;
@@ -1048,12 +1116,13 @@ async function doCreateCompany(){
     applyRoleRestrictions('admin');
     updateCompanySwitcherBtn();
     _ncData={};
-    logAudit('Company Created', `Company: ${cname}`);
+    logAudit('Company Created',`Company: ${cname}`);
     showToast(`🏢 "${cname}" created & loaded!`,'#059669');
     navigate('dashboard');
+
   }catch(e){
     console.error('Create company error:',e);
-    if(errEl){errEl.textContent='Error: '+(e.message||'Could not save. Check internet.');errEl.style.display='block';}
+    if(errEl){errEl.textContent='❌ '+e.message;errEl.style.display='block';}
   }finally{
     if(btn){btn.disabled=false;btn.textContent='🏢 Create Company & Sign In →';}
   }
@@ -1164,12 +1233,13 @@ function showUserMenu(){
     <div style="display:flex;flex-direction:column;gap:10px;">${btns}</div>
   `);
 }
-function doLogout(){
+async function doLogout(){
   closeModal();
   clearTimeout(_sessionTimer);
   logAudit('Logout', `User ${currentUser?.username||'?'} logged out`);
-  saveState();
-  currentUser=null;_selectedCompanyId=null;
+  try{ await saveState(); }catch(_){}
+  try{ await getSupa().auth.signOut(); }catch(_){}
+  currentUser=null; _selectedCompanyId=null;
   sessionStorage.removeItem('loggedInUser');
   sessionStorage.removeItem('companyId');
   document.getElementById('app').classList.add('hidden');
@@ -1304,6 +1374,7 @@ function showToast(msg,color='#059669'){
   t.innerHTML=msg;document.body.appendChild(t);
   setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .4s';setTimeout(()=>t.remove(),400);},3000);
 }
+function showAlert(msg){ showToast('⚠️ '+msg,'#dc2626'); }
 function exportXLS(data,sheet,file){
   const wb=XLSX.utils.book_new();
   const ws=XLSX.utils.aoa_to_sheet(data);
@@ -1825,8 +1896,8 @@ function updGrp(type,sel){
 }
 function saveAcc(editId){
   const id=eid('f-id').value.trim(),name=eid('f-name').value.trim(),type=eid('f-type').value,group=eid('f-grp').value,bal=parseFloat(eid('f-bal').value)||0,nat=eid('f-nat').value;
-  if(!id||!name)return alert('ID and Name required');
-  if(!editId&&state.accounts.find(a=>a.id===id))return alert('ID already exists');
+  if(!id||!name)return showAlert('ID and Name required');
+  if(!editId&&state.accounts.find(a=>a.id===id))return showAlert('ID already exists');
   const obj={id,name,type,group,balance:bal,nature:nat};
   if(editId) state.accounts=state.accounts.map(a=>a.id===editId?obj:a);
   else state.accounts.push(obj);
@@ -1948,7 +2019,7 @@ function toggleGSTInput(){
 }
 function saveParty(ptype,editId){
   const name=eid('p-name').value.trim();
-  if(!name)return alert('Name is required');
+  if(!name)return showAlert('Name is required');
   const obj={
     id:editId||(ptype[0]+Date.now()),name,
     address:eid('p-addr').value.trim(),city:eid('p-city').value.trim(),
@@ -2064,7 +2135,7 @@ function toggleHSNSAC(type){
 function saveItem(editId){
   if(!state.items)state.items=[];
   const name=eid('it-name').value.trim();
-  if(!name)return alert('Item name required');
+  if(!name)return showAlert('Item name required');
   const obj={
     id:editId||('ITM'+String(Date.now()).slice(-6)),
     name,type:eid('it-type').value,
@@ -2578,12 +2649,12 @@ function showEntryPreviewAndSave(){
   const nar=eid('v-nar')?.value.trim()||'', ref=eid('v-ref')?.value.trim()||'';
   const partyId=eid('v-party')?.value||'', due=eid('v-due')?.value||'';
   const tdsSection=eid('v-tds')?.value||'';
-  if(!nar)return alert('Narration is required');
-  if(!dt) return alert('Date is required');
+  if(!nar)return showAlert('Narration is required');
+  if(!dt) return showAlert('Date is required');
 
   const preview=computePreviewEntries(tp,vItemLines).filter(e=>!e._journalHint);
-  if(['Journal','Contra'].includes(tp))return alert('Journal/Contra vouchers require Manual (Accounts) mode.\nPlease switch to Manual mode to enter your Dr/Cr entries.');
-  if(!preview.length)return alert('Please add at least one item line with amount');
+  if(['Journal','Contra'].includes(tp))return showAlert('Journal/Contra vouchers require Manual (Accounts) mode.\nPlease switch to Manual mode to enter your Dr/Cr entries.');
+  if(!preview.length)return showAlert('Please add at least one item line with amount');
   const totDr=preview.reduce((s,e)=>s+(e.dr||0),0);
   const totCr=preview.reduce((s,e)=>s+(e.cr||0),0);
   const bal=Math.abs(totDr-totCr)<0.01;
@@ -2663,7 +2734,7 @@ function _commitZohoVoucher(id,dt,tp,narEnc,ref,partyId,due,tdsSection){
   if(editVId){
     state.vouchers=state.vouchers.map(v=>v.id===editVId?vobj:v);editVId=null;
   }else{
-    if(state.vouchers.find(v=>v.id===id))return alert('Voucher ID already exists');
+    if(state.vouchers.find(v=>v.id===id))return showAlert('Voucher ID already exists');
     state.vouchers.push(vobj);
   }
   logAudit(editVId?'Voucher Edited':'Voucher Created', `${tp} ${id}: ${nar}`);
@@ -2680,8 +2751,8 @@ function showManualPreviewAndPost(){
   const id=eid('v-id')?.value.trim(), dt=eid('v-date')?.value, tp=eid('v-type')?.value;
   const nar=eid('v-nar')?.value.trim()||'', ref=eid('v-ref')?.value.trim()||'';
   const partyId=eid('v-party')?.value||'', due=eid('v-due')?.value||'';
-  if(!nar) return alert('Narration is required');
-  if(!dt)  return alert('Date is required');
+  if(!nar) return showAlert('Narration is required');
+  if(!dt)  return showAlert('Date is required');
   // Read entries live from DOM
   const entries=[];
   document.querySelectorAll('.m-acc-row').forEach(row=>{
@@ -2690,10 +2761,10 @@ function showManualPreviewAndPost(){
     const cr=parseFloat(row.querySelector('.m-cr')?.value)||0;
     if(accId&&(dr>0||cr>0)) entries.push({accId,dr,cr});
   });
-  if(entries.length<2) return alert('Add at least 2 account entries');
+  if(entries.length<2) return showAlert('Add at least 2 account entries');
   const totDr=entries.reduce((s,e)=>s+(e.dr||0),0);
   const totCr=entries.reduce((s,e)=>s+(e.cr||0),0);
-  if(Math.abs(totDr-totCr)>0.01) return alert('Entry not balanced!\nDebit: '+fmt(totDr)+' | Credit: '+fmt(totCr));
+  if(Math.abs(totDr-totCr)>0.01) return showAlert('Entry not balanced!\nDebit: '+fmt(totDr)+' | Credit: '+fmt(totCr));
 
   // ── Golden Rules Validation ──
   const warnings=[];
@@ -2793,11 +2864,11 @@ function showManualPreviewAndPost(){
 function _postManualVoucher(id,dt,tp,narEnc,ref,partyId,due){
   const nar=decodeURIComponent(narEnc);
   const entries=window._pendingManualEntries||[];
-  if(!entries.length){alert('No entries found. Please try again.');return;}
+  if(!entries.length){showAlert('No entries found. Please try again.');return;}
   const totDr=entries.reduce((s,e)=>s+(e.dr||0),0);
   const vobj={id,date:dt,type:tp,narration:nar,ref,partyId,dueDate:due,entries,gstType:'',tdsSection:'',items:[],totals:{taxable:0,cgst:0,sgst:0,igst:0,tds:0,grand:totDr}};
   if(editVId){state.vouchers=state.vouchers.map(v=>v.id===editVId?vobj:v);editVId=null;}
-  else{if(state.vouchers.find(v=>v.id===id))return alert('Voucher ID already exists');state.vouchers.push(vobj);}
+  else{if(state.vouchers.find(v=>v.id===id))return showAlert('Voucher ID already exists');state.vouchers.push(vobj);}
   window._pendingManualEntries=[];
   scheduleSave();
   showToast('✅ '+tp+' Voucher <strong>'+id+'</strong> posted successfully!');
@@ -2810,9 +2881,9 @@ function saveManualVoucher(){
   const id=eid('v-id')?.value.trim(),dt=eid('v-date')?.value,tp=eid('v-type')?.value;
   const nar=eid('v-nar')?.value.trim()||'',ref=eid('v-ref')?.value.trim()||'';
   const partyId=eid('v-party')?.value||'',due=eid('v-due')?.value||'',tdsSection=eid('v-tds')?.value||'';
-  if(!id)return alert('Voucher ID is required');
-  if(!dt)return alert('Date is required');
-  if(!nar)return alert('Narration is required');
+  if(!id)return showAlert('Voucher ID is required');
+  if(!dt)return showAlert('Date is required');
+  if(!nar)return showAlert('Narration is required');
   // Read manual entry rows
   const entries=[];
   document.querySelectorAll('.m-acc-row').forEach((row,i)=>{
@@ -2821,13 +2892,13 @@ function saveManualVoucher(){
     const cr=parseFloat(row.querySelector('.m-cr')?.value)||0;
     if(accId&&(dr>0||cr>0))entries.push({accId,dr,cr});
   });
-  if(entries.length<2)return alert('Add at least 2 account entries');
+  if(entries.length<2)return showAlert('Add at least 2 account entries');
   const totDr=entries.reduce((s,e)=>s+(e.dr||0),0);
   const totCr=entries.reduce((s,e)=>s+(e.cr||0),0);
-  if(Math.abs(totDr-totCr)>0.01)return alert(`Entry not balanced!\nDebit: ₹${totDr.toFixed(2)} | Credit: ₹${totCr.toFixed(2)}\nDifference: ₹${Math.abs(totDr-totCr).toFixed(2)}`);
+  if(Math.abs(totDr-totCr)>0.01)return showAlert(`Entry not balanced!\nDebit: ₹${totDr.toFixed(2)} | Credit: ₹${totCr.toFixed(2)}\nDifference: ₹${Math.abs(totDr-totCr).toFixed(2)}`);
   const vobj={id,date:dt,type:tp,narration:nar,ref,partyId,dueDate:due,entries,gstType:'',tdsSection,items:[],totals:{taxable:0,cgst:0,sgst:0,igst:0,tds:0,grand:totDr}};
   if(editVId){state.vouchers=state.vouchers.map(v=>v.id===editVId?vobj:v);editVId=null;}
-  else{if(state.vouchers.find(v=>v.id===id))return alert('Voucher ID already exists');state.vouchers.push(vobj);}
+  else{if(state.vouchers.find(v=>v.id===id))return showAlert('Voucher ID already exists');state.vouchers.push(vobj);}
   scheduleSave();
   showToast(`✅ ${tp} Voucher <strong>${id}</strong> posted!`);
   vItemLines=[{itemId:'',desc:'',qty:1,rate:0,disc:0,gstRate:18,gstType:'CGST+SGST (Intra-state)'}];
@@ -3408,7 +3479,7 @@ function renderOutstanding(){
 
 function viewPartyLedger(type, partyId, partyName){
   const vouchers = state.vouchers.filter(v => v.partyId === partyId);
-  if(!vouchers.length){ alert('No vouchers found for '+partyName); return; }
+  if(!vouchers.length){ showAlert('No vouchers found for '+partyName); return; }
   const isDebtor = type === 'debtor';
   let running = 0;
   const rows = [...vouchers].sort((a,b) => a.date.localeCompare(b.date)).map((v,i) => {
@@ -3749,7 +3820,7 @@ function saveAdv(type,editId){
   if(!state.advances)state.advances=[];
   const partyId=eid('adv-party').value,dt=eid('adv-date').value;
   const amount=parseFloat(eid('adv-amt').value)||0;
-  if(!partyId||!amount)return alert('Party and amount required');
+  if(!partyId||!amount)return showAlert('Party and amount required');
   const obj={id:editId||('ADV'+Date.now()),type,partyId,date:dt,amount,adjusted:parseFloat(eid('adv-adj').value)||0,narration:eid('adv-nar').value.trim()};
   if(editId)state.advances=state.advances.map(x=>x.id===editId?obj:x);else state.advances.push(obj);
   scheduleSave();closeModal();pgAdvances();
@@ -3835,7 +3906,7 @@ function openAddStmtForm(bankAccId){
 function saveStmt(bankAccId){
   if(!state.bankStatements)state.bankStatements=[];
   const desc=eid('bs-desc').value.trim(),dt=eid('bs-date').value;
-  if(!desc||!dt)return alert('Date and description required');
+  if(!desc||!dt)return showAlert('Date and description required');
   const obj={id:'BS'+Date.now(),bankAccId,date:dt,description:desc,debit:parseFloat(eid('bs-dr').value)||0,credit:parseFloat(eid('bs-cr').value)||0,balance:parseFloat(eid('bs-bal').value)||0,matched:false};
   state.bankStatements.push(obj);scheduleSave();closeModal();renderBankRecon(bankAccId);
 }
@@ -3875,7 +3946,7 @@ function importStmtCSV(bankAccId){
 }
 
 function parseCSV(bankAccId){
-  const file=eid('csv-file')?.files[0];if(!file)return alert('Select a CSV file');
+  const file=eid('csv-file')?.files[0];if(!file)return showAlert('Select a CSV file');
   const reader=new FileReader();
   reader.onload=e=>{
     const lines=e.target.result.split('\n').filter(l=>l.trim()&&!l.startsWith('Date'));
@@ -4432,25 +4503,32 @@ function pgImport(){
     <div>
       <div style="font-weight:700;font-size:14px;margin-bottom:14px;">📤 Export Data</div>
       <div class="card" style="padding:20px;">
-        <div class="fgr" style="margin-bottom:14px;">
-          <div style="font-weight:700;margin-bottom:8px;">Export Complete Data to Excel</div>
-          <div style="font-size:12px;color:var(--tm);margin-bottom:10px;">Export all data (Accounts, Vouchers, Vendors, Debtors, Trial Balance) into a multi-sheet Excel file.</div>
-          <button class="btn btn-s" onclick="exportAllExcel()">⬇ Export All Data (Excel)</button>
+        <div style="background:#ecfdf5;border:1.5px solid #a7f3d0;border-radius:10px;padding:14px;margin-bottom:14px;">
+          <div style="font-weight:700;margin-bottom:4px;font-size:13px;">🗂 Full Excel Backup (Recommended)</div>
+          <div style="font-size:11px;color:#065f46;margin-bottom:10px;">Exports everything — Accounts, Vouchers, Vendors, Debtors, Invoices, Employees, Payroll, Bank Statements & Trial Balance into a single multi-sheet Excel file.</div>
+          <button class="btn btn-s" style="width:100%;justify-content:center;" onclick="exportFullBackupExcel()">⬇ Download Full Excel Backup</button>
         </div>
-        <hr style="border:none;border-top:1px solid var(--bdr);margin:14px 0;">
         <div class="fgr" style="margin-bottom:14px;">
-          <div style="font-weight:700;margin-bottom:8px;">Export as JSON Backup</div>
-          <div style="font-size:12px;color:var(--tm);margin-bottom:10px;">Full backup of all your data as a .json file. Use this to restore later.</div>
-          <button class="btn btn-p" onclick="exportJSON()">💾 Download JSON Backup</button>
+          <div style="font-weight:700;margin-bottom:4px;">📊 Standard Export (Accounts + Vouchers)</div>
+          <div style="font-size:11px;color:var(--tm);margin-bottom:8px;">Core accounting data only — Accounts, Vouchers, Vendors, Debtors, Trial Balance.</div>
+          <button class="btn btn-p" onclick="exportAllExcel()">⬇ Export Accounting Data (Excel)</button>
         </div>
-        <hr style="border:none;border-top:1px solid var(--bdr);margin:14px 0;">
+        <div class="fgr" style="margin-bottom:14px;">
+          <div style="font-weight:700;margin-bottom:4px;">💾 JSON Backup</div>
+          <div style="font-size:11px;color:var(--tm);margin-bottom:8px;">Complete raw backup. Use this to restore all data later.</div>
+          <button class="btn btn-g" onclick="exportJSON()">💾 Download JSON Backup</button>
+        </div>
+        <hr style="border:none;border-top:1px solid var(--bdr);margin:12px 0;">
         <div>
-          <div style="font-weight:700;margin-bottom:4px;font-size:12px;">Current Data Summary</div>
-          <div style="font-size:11px;color:var(--tm);line-height:1.8;">
-            📋 Accounts: <strong>${state.accounts.length}</strong><br>
+          <div style="font-weight:700;margin-bottom:4px;font-size:12px;">📊 Current Data Summary</div>
+          <div style="font-size:11px;color:var(--tm);line-height:1.9;">
+            📋 Accounts: <strong>${state.accounts.length}</strong> &nbsp;|&nbsp;
             📝 Vouchers: <strong>${state.vouchers.length}</strong><br>
-            🏭 Vendors: <strong>${state.vendors.length}</strong><br>
-            🤝 Debtors: <strong>${state.debtors.length}</strong>
+            🏭 Vendors: <strong>${state.vendors.length}</strong> &nbsp;|&nbsp;
+            🤝 Debtors: <strong>${state.debtors.length}</strong><br>
+            🧾 Invoices: <strong>${(state.invoices||[]).length}</strong> &nbsp;|&nbsp;
+            👥 Employees: <strong>${(state.employees||[]).length}</strong><br>
+            🏦 Bank Entries: <strong>${(state.bankStatements||[]).length}</strong>
           </div>
         </div>
       </div>
@@ -4578,7 +4656,7 @@ function parseExcelImport(input){
 }
 
 function doImportExcel(mode){
-  if(!importedData)return alert('No data to import');
+  if(!importedData)return showAlert('No data to import');
   if(!confirm(`This will ${mode==='replace'?'REPLACE ALL your data':'merge imported data with existing'}. Continue?`))return;
   if(mode==='replace'){
     state.accounts=importedData.accounts;
@@ -4593,7 +4671,7 @@ function doImportExcel(mode){
     importedData.debtors.forEach(d=>{if(!state.debtors.find(x=>x.name===d.name))state.debtors.push(d);});
   }
   scheduleSave();
-  alert(`Import successful! ${importedData.accounts.length} accounts, ${importedData.vouchers.length} vouchers imported.`);
+  showAlert(`Import successful! ${importedData.accounts.length} accounts, ${importedData.vouchers.length} vouchers imported.`);
   importedData=null;
   pgImport();
 }
@@ -4616,6 +4694,23 @@ function exportAllExcel(){
     {name:'Trial Balance',data:[['Account ID','Account Name','Debit','Credit'],...rows.map(r=>[r.id,r.name,r.closingDr||0,r.closingCr||0])]},
   ],`${state.company.replace(/\s+/g,'_')}_Complete_Export_${today()}.xlsx`);
 }
+function exportFullBackupExcel(){
+  const L=computeLedger();
+  const sheets=[
+    {name:'Accounts',data:[['Account ID','Account Name','Group','Type','Opening Balance','Nature'],...state.accounts.map(a=>[a.id,a.name,a.group,a.type,a.balance,a.nature])]},
+    {name:'Vouchers',data:[['Voucher ID','Date','Type','Account ID','Debit','Credit','Narration'],...state.vouchers.flatMap(v=>v.entries.map(e=>[v.id,v.date,v.type,e.accId,e.dr||0,e.cr||0,v.narration]))]},
+    {name:'Vendors',data:[['Name','City','State','GSTN','Contact','Email'],...(state.vendors||[]).map(v=>[v.name,v.city,v.state,v.gstn,v.contact,v.email])]},
+    {name:'Debtors',data:[['Name','City','State','GSTN','Contact','Email'],...(state.debtors||[]).map(d=>[d.name,d.city,d.state,d.gstn,d.contact,d.email])]},
+    {name:'Invoices',data:[['Invoice No','Date','Customer','GSTN','Total'],...(state.invoices||[]).map(inv=>{const tot=(inv.items||[]).reduce((s,it)=>s+(it.qty*it.rate*(1+(it.gst||0)/100)),0);return [inv.id,inv.date,inv.customer,inv.customerGstin||'',tot.toFixed(2)];})]},
+    {name:'Employees',data:[['ID','Name','Designation','Department','Basic','PAN'],...(state.employees||[]).map(e=>[e.id,e.name,e.designation,e.department,e.basic,e.pan])]},
+    {name:'Payroll',data:[['Month','Emp ID','Name','Gross','PF','ESI','TDS','Net'],...(state.payroll||[]).flatMap(p=>(p.entries||[]).map(e=>[p.month,e.empId,e.name,e.gross||0,e.pf||0,e.esi||0,e.tds||0,e.net||0]))]},
+    {name:'Bank Statements',data:[['Account ID','Date','Description','Debit','Credit','Balance','Matched'],...(state.bankStatements||[]).map(s=>[s.bankAccId,s.date,s.description,s.debit||0,s.credit||0,s.balance||0,s.matched?'Yes':'No'])]},
+    {name:'Trial Balance',data:[['Account ID','Account Name','Debit','Credit'],...state.accounts.map(a=>[a.id,a.name,L[a.id]?.closingDr||0,L[a.id]?.closingCr||0])]},
+  ];
+  exportMultiXLS(sheets,`${(state.company||'AccounTally').replace(/\s+/g,'_')}_FullBackup_${today()}.xlsx`);
+  showToast('✅ Full Excel backup downloaded!','#059669');
+}
+
 function exportJSON(){
   const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
@@ -4631,9 +4726,9 @@ function importJSON(input){
       if(!confirm('Replace ALL current data with backup? This cannot be undone.'))return;
       state={...DEFAULT_STATE,...data};
       scheduleSave();
-      alert('Backup restored successfully!');
+      showAlert('Backup restored successfully!');
       navigate('dashboard');
-    }catch(err){alert('Import failed: '+err.message);}
+    }catch(err){showAlert('Import failed: '+err.message);}
   };
   reader.readAsText(file);
   input.value='';
@@ -4721,7 +4816,8 @@ function openAddUserForm(){
         <option value="viewer">Viewer — Read only</option>
       </select>
     </div>
-    <div class="fgr"><label class="fl">Password *</label><input type="password" class="fc" id="nu-pass" placeholder="Min 4 chars"></div>
+    <div class="fgr"><label class="fl">Mobile Number * <small style="color:var(--tm);">(OTP reset)</small></label><input class="fc" id="nu-mobile" type="tel" placeholder="+91 9876543210" maxlength="13"></div>
+    <div class="fgr"><label class="fl">Password *</label><input type="password" class="fc" id="nu-pass" placeholder="Min 6 chars"></div>
     <div class="fgr"><label class="fl">Confirm Password *</label><input type="password" class="fc" id="nu-pass2" placeholder="Re-enter password"></div>
   </div>
   <div style="margin-top:14px;display:flex;gap:8px;">
@@ -4732,24 +4828,40 @@ function openAddUserForm(){
 async function addNewUser(){
   const u=sanitizeInput(eid('nu-user').value.trim()),r=eid('nu-role').value;
   const p=eid('nu-pass').value,p2=eid('nu-pass2').value;
-  if(!u||!p)return alert('Username and password required');
-  if(p!==p2)return alert('Passwords do not match');
-  if(p.length<6)return alert('Password must be at least 6 characters');
+  if(!u||!p)return showAlert('Username and password required');
+  if(p!==p2)return showAlert('Passwords do not match');
+  if(p.length<6)return showAlert('Password must be at least 6 characters');
   try{
-    const h=await sha256(p);
+    const email=u.toLowerCase()+'_'+(state.companyId||'').toLowerCase()+'@accountally.app';
+    // Use a separate temp client so admin session is NOT replaced
+    const tempClient=supabase.createClient(getSupa().supabaseUrl||'https://dfsltxehfdmnwxkwecww.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRmc2x0eGVoZmRtbnd4a3dlY3d3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NTg0MDgsImV4cCI6MjA4NzQzNDQwOH0.Xe8JTV2Gw1WfCx-0U4im64dZ8aw_wYWhrFqciDrX990',
+      {auth:{persistSession:false,autoRefreshToken:false}}
+    );
+    const {data:authData,error:authErr}=await tempClient.auth.signUp({email,password:p});
+    if(authErr) throw new Error('Auth error: '+authErr.message);
+    if(!authData.user) throw new Error('Signup failed — check Supabase email confirmation is OFF');
+    // Insert into app_users (admin's session handles this, RLS: same company)
+    const mobVal=(eid('nu-mobile')?.value||'').trim();
+    const {error:userErr}=await getSupa().from('app_users').insert({
+      username: u.toLowerCase(),
+      user_id: authData.user.id,
+      company_id: state.companyId||_selectedCompanyId,
+      role: r,
+      mobile: mobVal
+    });
+    if(userErr) throw new Error('Could not save user: '+userErr.message);
     const fullName=eid('nu-fname')?.value.trim()||u;
-    const cid2=state.companyId||'LEGACY';
-    await DB.set('users',u,{id:cid2+'_u'+Date.now(),username:u,passwordHash:h,role:r});
     if(!state.appUsers)state.appUsers=[];
-    if(!state.appUsers.find(x=>x.username===u)){
-      state.appUsers.push({username:u,role:r,fullName,createdAt:new Date().toISOString()});
+    if(!state.appUsers.find(x=>x.username===u.toLowerCase())){
+      state.appUsers.push({username:u.toLowerCase(),role:r,fullName,createdAt:new Date().toISOString()});
     }
     scheduleSave();
     closeModal();
     showToast('✅ User "'+u+'" created successfully!','#059669');
     loadUserList();
   }catch(e){
-    alert('Error creating user: '+(e.message||'Please check your connection and try again.'));
+    showAlert('Error creating user: '+(e.message||'Please check your connection and try again.'));
   }
 }
 async function delUser(username){
@@ -4769,7 +4881,7 @@ function loadSampleData(){
 
 function saveSettings(){
   const co=eid('s-co').value.trim()||state.company;
-  if(!co)return alert('Company name is required');
+  if(!co)return showAlert('Company name is required');
   const fy=eid('s-fy').value;
   const range=fyRange(fy);
   state.company=co;
@@ -4976,7 +5088,7 @@ function saveInvoice(status){
   const no=document.getElementById('inv-no')?.value;
   const date=document.getElementById('inv-date')?.value;
   const cust=document.getElementById('inv-cust')?.value;
-  if(!cust){alert('Please enter customer name.');return;}
+  if(!cust){showAlert('Please enter customer name.');return;}
   const items=[];
   const tbody=document.getElementById('inv-items-body');
   [...tbody.rows].forEach(tr=>{
@@ -4992,7 +5104,7 @@ function saveInvoice(status){
       gst:parseFloat(document.getElementById('inv-gst-'+id)?.value||0),
     });
   });
-  if(!items.length){alert('Add at least one item.');return;}
+  if(!items.length){showAlert('Add at least one item.');return;}
   const inv={
     id:no, date, customer:cust,
     customerGstin:document.getElementById('inv-cgstin')?.value||'',
@@ -5251,7 +5363,7 @@ function calcEmpSalary(){
 
 function saveEmployee(editId){
   const name=document.getElementById('emp-name')?.value.trim();
-  if(!name){alert('Employee name required.');return;}
+  if(!name){showAlert('Employee name required.');return;}
   const emp={
     id:document.getElementById('emp-id')?.value.trim(),
     name,
@@ -5346,8 +5458,8 @@ function pgPayroll(){
 
 function processPayroll(){
   const month=document.getElementById('pr-month')?.value;
-  if(!month){alert('Select a month.');return;}
-  if(!state.employees||!state.employees.length){alert('No employees found. Add employees first from Employee Master.');return;}
+  if(!month){showAlert('Select a month.');return;}
+  if(!state.employees||!state.employees.length){showAlert('No employees found. Add employees first from Employee Master.');return;}
   const exists=state.payroll.find(p=>p.month===month);
   if(exists){if(!confirm('Payroll for this month already exists. Overwrite?'))return;state.payroll=state.payroll.filter(p=>p.month!==month);}
   const active=state.employees.filter(e=>e.status==='active');
@@ -5627,38 +5739,47 @@ async function saveAppUser(editUsername){
   const pass=document.getElementById('nu-pass')?.value;
   const role=document.getElementById('nu-role')?.value;
   const fullName=document.getElementById('nu-name')?.value.trim()||username;
-  if(!username){alert('Username required.');return;}
-  if(!editUsername&&!pass){alert('Password required for new user.');return;}
-  if(pass&&pass.length<4){alert('Password must be at least 4 characters.');return;}
-  if(!role){alert('Select a role.');return;}
+  if(!username){showAlert('Username required.');return;}
+  if(!editUsername&&!pass){showAlert('Password required for new user.');return;}
+  if(pass&&pass.length<6){showAlert('Password must be at least 6 characters.');return;}
+  if(!role){showAlert('Select a role.');return;}
   if(!state.appUsers)state.appUsers=[];
   try{
     if(editUsername){
-      // Editing existing user
+      // Editing existing user — update role only (password changes via Supabase Auth)
       const idx=state.appUsers.findIndex(u=>u.username===editUsername);
       const updatedUser={username:editUsername,role,fullName,
-        createdAt:state.appUsers[idx]?.createdAt||new Date().toISOString(),
-        passwordHash:state.appUsers[idx]?.passwordHash||''};
-      if(pass){
-        const h=await sha256(pass);
-        updatedUser.passwordHash=h;
-        await DB.set('users',editUsername,{username:editUsername,passwordHash:h,role});
-      } else {
-        await DB.set('users',editUsername,{username:editUsername,
-          passwordHash:updatedUser.passwordHash,role});
-      }
+        createdAt:state.appUsers[idx]?.createdAt||new Date().toISOString()};
+      await DB.set('users',editUsername,{username:editUsername,role,
+        companyId:state.companyId||_selectedCompanyId});
       if(idx>=0) state.appUsers[idx]=updatedUser;
       else state.appUsers.push(updatedUser);
+      if(pass){
+        showToast('⚠️ Password changes must be done by the user via Supabase directly.','#d97706');
+      }
     } else {
-      // Adding new user — no duplicate check, DB.set uses upsert so it's safe
-      const h=await sha256(pass);
-      const newUser={username,passwordHash:h,role,fullName,
+      // Check for duplicate username in this company first
+      if(state.appUsers && state.appUsers.find(u=>u.username.toLowerCase()===username.toLowerCase())){
+        showAlert('Username "'+username+'" already exists in this company. Choose a different username.');return;
+      }
+      // Adding new user via Supabase Auth (temp client to protect admin session)
+      const cid=(state.companyId||_selectedCompanyId||'').toLowerCase();
+      const email=username.toLowerCase()+'_'+cid+'@accountally.app';
+      const tempClient=supabase.createClient('https://dfsltxehfdmnwxkwecww.supabase.co',
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRmc2x0eGVoZmRtbnd4a3dlY3d3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NTg0MDgsImV4cCI6MjA4NzQzNDQwOH0.Xe8JTV2Gw1WfCx-0U4im64dZ8aw_wYWhrFqciDrX990',
+        {auth:{persistSession:false,autoRefreshToken:false}}
+      );
+      const {data:authData,error:authErr}=await tempClient.auth.signUp({email,password:pass});
+      if(authErr) throw new Error('Auth error: '+authErr.message);
+      if(!authData.user) throw new Error('Signup failed');
+      const {error:insErr}=await getSupa().from('app_users').insert({
+        username:username.toLowerCase(), user_id:authData.user.id,
+        company_id:state.companyId||_selectedCompanyId, role
+      });
+      if(insErr) throw new Error('DB error: '+insErr.message);
+      const newUser={username:username.toLowerCase(),role,fullName,
         createdAt:new Date().toISOString(),createdBy:currentUser?.username};
-      // Embed companyId in user id so login can find correct company state
-      const cid=state.companyId||'LEGACY';
-      await DB.set('users',username,{id:cid+'_u'+Date.now(),username,passwordHash:h,role});
-      // Only add to state.appUsers if not already there
-      if(!state.appUsers.find(u=>u.username===username)){
+      if(!state.appUsers.find(u=>u.username===username.toLowerCase())){
         state.appUsers.push(newUser);
       }
     }
@@ -5668,7 +5789,7 @@ async function saveAppUser(editUsername){
     pgUserMgmt();
   } catch(e){
     console.error('saveAppUser error:',e);
-    alert('Error saving user: '+(e.message||'Check your internet connection and try again.'));
+    showAlert('Error saving user: '+(e.message||'Check your internet connection and try again.'));
   }
 }
 
@@ -6626,8 +6747,8 @@ function pgEInvoice(){
 
 function generateIRN(invId){
   const inv=state.invoices.find(i=>i.id===invId);
-  if(!inv){alert('Invoice not found.');return;}
-  if(!state.gstin){alert('Please set your GSTIN in Settings before generating e-invoice.');navigate('settings');return;}
+  if(!inv){showAlert('Invoice not found.');return;}
+  if(!state.gstin){showAlert('Please set your GSTIN in Settings before generating e-invoice.');navigate('settings');return;}
 
   // Build NIC-compliant e-invoice JSON (Schema v1.1)
   const taxable=inv.items.reduce((s,it)=>s+(it.qty*it.rate),0);
@@ -6715,7 +6836,7 @@ function generateIRN(invId){
 
 function viewIRN(invId){
   const inv=state.invoices.find(i=>i.id===invId);
-  if(!inv?.irn){alert('IRN not generated yet.');return;}
+  if(!inv?.irn){showAlert('IRN not generated yet.');return;}
   const total=inv.items.reduce((s,it)=>s+(it.qty*it.rate*(1+(it.gst||0)/100)),0);
   openModal(`🔐 E-Invoice — ${inv.id}`,`
     <div style="background:#f0fdf4;border:1px solid #a7f3d0;border-radius:10px;padding:14px;margin-bottom:14px;">
@@ -6742,7 +6863,7 @@ function viewIRN(invId){
 
 function downloadEInvoice(invId){
   const inv=state.invoices.find(i=>i.id===invId);
-  if(!inv?.irnPayload){alert('Generate IRN first.');return;}
+  if(!inv?.irnPayload){showAlert('Generate IRN first.');return;}
   const blob=new Blob([JSON.stringify(inv.irnPayload,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
   a.download=`EInvoice_${inv.id}_${state.gstin||'NA'}.json`;a.click();
@@ -6850,7 +6971,7 @@ function pgAuditTrail(){
 }
 
 function exportAuditLog(){
-  if(!state.auditLog||!state.auditLog.length){alert('No audit log entries to export.');return;}
+  if(!state.auditLog||!state.auditLog.length){showAlert('No audit log entries to export.');return;}
   const rows=state.auditLog.map(e=>[
     new Date(e.ts).toLocaleString('en-IN'),
     e.action||'',
@@ -6874,26 +6995,39 @@ function exportAuditLog(){
 // INIT
 // ══════════════════════════════════════════════════════════════════
 async function init(){
+  const safetyTimer=setTimeout(()=>{
+    console.warn('Init timeout — showing company select');
+    showCompanySelectScreen();
+  },8000);
   try{
-    await DB.open();
+    // v11: restore Supabase Auth token first
+    let session=null;
+    try{
+      const {data}=await getSupa().auth.getSession();
+      session=data?.session||null;
+    }catch(e){ console.warn('getSession error:',e); }
+
     const savedUsername=sessionStorage.getItem('loggedInUser');
     const savedCompanyId=sessionStorage.getItem('companyId');
-    if(savedUsername&&savedCompanyId){
-      // Restore existing session — be lenient about user id format
-      let savedState=null;
-      try{savedState=await DB.get('data',savedCompanyId);}catch(_){}
-      if(!savedState){try{savedState=await DB.get('data','state');}catch(_){}}
-      if(savedState){state={...DEFAULT_STATE,...savedState,companyId:savedCompanyId};}
-      if(state.appUsers)state.appUsers=state.appUsers.filter(u=>u&&u.passwordHash&&u.username);
-      const users=await DB.getAll('users');
-      // Accept user if: matches username AND (has correct companyId prefix OR no prefix at all (legacy))
-      const user=users.find(u=>u.username===savedUsername&&(
-        (u.id&&u.id.startsWith(savedCompanyId+'_'))||
-        (!u.id||!u.id.includes('_'))
-      ));
-      if(user){
+
+    if(session && savedUsername && savedCompanyId){
+      let userRow=null;
+      try{
+        const {data,error}=await getSupa().from('app_users')
+          .select('*').eq('username',savedUsername).maybeSingle();
+        if(!error) userRow=data;
+      }catch(_){}
+
+      if(userRow && userRow.company_id===savedCompanyId){
+        const user=rowToUser(userRow);
+        let savedState=null;
+        try{savedState=await DB.get('data',savedCompanyId);}catch(_){}
+        if(savedState){state={...DEFAULT_STATE,...savedState,companyId:savedCompanyId};}
+        else{state={...DEFAULT_STATE,companyId:savedCompanyId};}
+        if(state.appUsers)state.appUsers=state.appUsers.filter(x=>x&&x.username);
         currentUser=user;
         _selectedCompanyId=savedCompanyId;
+        clearTimeout(safetyTimer);
         document.getElementById('co-select-wrap').classList.add('hidden');
         document.getElementById('login-wrap').classList.add('hidden');
         document.getElementById('app').classList.remove('hidden');
@@ -6902,21 +7036,23 @@ async function init(){
         document.getElementById('sb-company').textContent=state.company||'My Company';
         document.getElementById('sb-fy').textContent='FY '+(state.fy||'2025-26');
         document.getElementById('top-fy').textContent='FY '+(state.fy||'2025-26');
+        resetSessionTimer();
         applyRoleRestrictions(user.role);
         updateCompanySwitcherBtn();
         navigate('dashboard');
         return;
       } else {
-        // Session exists but user not matched — clear and show company select
+        try{await getSupa().auth.signOut();}catch(_){}
         sessionStorage.clear();
       }
+    } else {
+      if(!session) sessionStorage.clear();
     }
-    // No valid session — show company select screen
+    clearTimeout(safetyTimer);
     showCompanySelectScreen();
   }catch(e){
+    clearTimeout(safetyTimer);
     console.error('Init error:',e);
-    try{const ls=localStorage.getItem('accountally_fallback');if(ls)state={...DEFAULT_STATE,...JSON.parse(ls)};}catch(_){}
-    // Show company select on error too — graceful degradation
     showCompanySelectScreen();
   }
 }
@@ -6927,6 +7063,204 @@ document.getElementById('modal').addEventListener('click',function(e){
 });
 
 init();
+
+// ══════════════════════════════════════════════════════════════════
+//  OTP PASSWORD RESET — v12
+//  Uses Supabase Phone OTP (requires Twilio configured in Supabase)
+//  Flow: Username lookup → Mobile OTP → Set new password
+// ══════════════════════════════════════════════════════════════════
+
+let _otpState = { username:'', mobile:'', timer:null, resendCooldown:0 };
+
+function openOtpScreen(){
+  document.getElementById('login-wrap').classList.add('hidden');
+  document.getElementById('otp-wrap').classList.remove('hidden');
+  otpGoStep(1);
+  document.getElementById('otp-username').focus();
+}
+
+function closeOtpScreen(){
+  document.getElementById('otp-wrap').classList.add('hidden');
+  document.getElementById('login-wrap').classList.remove('hidden');
+  clearInterval(_otpState.timer);
+  _otpState = { username:'', mobile:'', timer:null, resendCooldown:0 };
+}
+
+function otpGoStep(n){
+  [1,2,3].forEach(i=>{
+    const el=document.getElementById('otp-s'+i);
+    if(el) el.classList.toggle('active', i===n);
+  });
+  const err=document.getElementById('otp-error');
+  if(err){err.textContent='';err.style.display='none';}
+}
+
+function otpShowError(msg){
+  const err=document.getElementById('otp-error');
+  if(err){err.textContent=msg;err.style.display='block';}
+}
+
+// Step 1: Look up username → fetch masked mobile from app_users
+async function otpLookupUser(){
+  const u=(document.getElementById('otp-username')?.value||'').trim().toLowerCase();
+  if(!u){otpShowError('Please enter your username.');return;}
+  const btn=document.querySelector('#otp-s1 .login-btn');
+  if(btn){btn.disabled=true;btn.textContent='Looking up…';}
+  try{
+    // Fetch from app_users — public select needed (anon key used before login)
+    const {data,error}=await getSupa()
+      .from('app_users').select('username,mobile,company_id')
+      .eq('username',u).maybeSingle();
+    if(error||!data){
+      otpShowError('Username not found. Check spelling and try again.');return;
+    }
+    if(!data.mobile||data.mobile.trim()===''){
+      otpShowError('No mobile number linked to this account. Contact your admin to add your mobile in User Management.');return;
+    }
+    _otpState.username = u;
+    _otpState.mobile = data.mobile.trim();
+    _otpState.companyId = data.company_id;
+    // Show masked mobile
+    const m=_otpState.mobile;
+    const masked = m.length>=4 ? m.slice(0,-4).replace(/\d/g,'*')+m.slice(-4) : '****'+m.slice(-2);
+    document.getElementById('otp-masked-mobile').textContent = masked;
+    document.getElementById('otp-mobile-display').style.display='block';
+    // Auto-send OTP
+    await otpSendSMS();
+  }catch(e){
+    otpShowError('Error: '+(e.message||'Could not reach server.'));
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Send OTP →';}
+  }
+}
+
+// Send OTP via Supabase phone signInWithOtp
+async function otpSendSMS(){
+  const btn=document.querySelector('#otp-s1 .login-btn');
+  if(btn){btn.disabled=true;btn.textContent='Sending OTP…';}
+  try{
+    // Normalize phone — ensure +91 prefix for Indian numbers
+    let phone = _otpState.mobile;
+    if(!phone.startsWith('+')) phone = '+91'+phone.replace(/^0/,'');
+    _otpState.phoneE164 = phone;
+
+    const {error}=await getSupa().auth.signInWithOtp({
+      phone: phone
+    });
+    if(error) throw new Error(error.message);
+
+    // Move to step 2 — OTP entry
+    document.getElementById('otp-sent-to').textContent = _otpState.mobile.slice(0,-4).replace(/\d/g,'*')+_otpState.mobile.slice(-4);
+    otpGoStep(2);
+    ['od1','od2','od3','od4','od5','od6'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.value='';
+    });
+    document.getElementById('od1')?.focus();
+    otpStartTimer(600); // 10 minutes
+  }catch(e){
+    otpShowError('Failed to send OTP: '+e.message+'\n\nMake sure Twilio is configured in Supabase → Authentication → Settings → SMS Provider.');
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Send OTP →';}
+  }
+}
+
+// OTP digit input — auto-advance and handle backspace
+function otpDigitInput(el, nextId){
+  el.value=el.value.replace(/[^0-9]/g,'');
+  if(el.value && nextId) document.getElementById(nextId)?.focus();
+  // Auto-verify when all 6 digits filled
+  const all=['od1','od2','od3','od4','od5','od6'];
+  if(all.every(id=>(document.getElementById(id)?.value||'').length===1)) otpVerify();
+}
+function otpDigitKey(e, el, prevId, selfId){
+  if(e.key==='Backspace'&&!el.value&&prevId) document.getElementById(prevId)?.focus();
+  if(e.key==='ArrowLeft'&&prevId) document.getElementById(prevId)?.focus();
+}
+
+// Step 2: Verify OTP entered by user
+async function otpVerify(){
+  const otp=['od1','od2','od3','od4','od5','od6'].map(id=>document.getElementById(id)?.value||'').join('');
+  if(otp.length!==6){otpShowError('Enter all 6 digits of the OTP.');return;}
+  const btn=document.querySelector('#otp-s2 .login-btn');
+  if(btn){btn.disabled=true;btn.textContent='Verifying…';}
+  try{
+    const {data,error}=await getSupa().auth.verifyOtp({
+      phone: _otpState.phoneE164,
+      token: otp,
+      type: 'sms'
+    });
+    if(error) throw new Error(error.message);
+    clearInterval(_otpState.timer);
+    // OTP verified — user is now signed in, move to password reset step
+    otpGoStep(3);
+    document.getElementById('otp-newpass')?.focus();
+  }catch(e){
+    otpShowError('Invalid or expired OTP. Try again or resend.');
+    ['od1','od2','od3','od4','od5','od6'].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.value='';
+    });
+    document.getElementById('od1')?.focus();
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Verify OTP →';}
+  }
+}
+
+// Step 3: Set new password (user is authenticated after OTP verify)
+async function otpSetNewPassword(){
+  const p=(document.getElementById('otp-newpass')?.value||'');
+  const p2=(document.getElementById('otp-newpass2')?.value||'');
+  if(p.length<6){otpShowError('Password must be at least 6 characters.');return;}
+  if(p!==p2){otpShowError('Passwords do not match.');return;}
+  const btn=document.querySelector('#otp-s3 .login-btn');
+  if(btn){btn.disabled=true;btn.textContent='Saving…';}
+  try{
+    const {error}=await getSupa().auth.updateUser({password:p});
+    if(error) throw new Error(error.message);
+    // Sign out the temp OTP session — user must login fresh with new password
+    await getSupa().auth.signOut();
+    closeOtpScreen();
+    showToast('✅ Password reset successfully! Please log in with your new password.','#059669');
+  }catch(e){
+    otpShowError('Failed to set password: '+e.message);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='🔐 Save New Password →';}
+  }
+}
+
+// Resend OTP (with 60s cooldown)
+async function otpResend(){
+  if(_otpState.resendCooldown>0){
+    otpShowError('Please wait '+_otpState.resendCooldown+'s before resending.');return;
+  }
+  _otpState.resendCooldown=60;
+  const cd=setInterval(()=>{
+    _otpState.resendCooldown--;
+    if(_otpState.resendCooldown<=0) clearInterval(cd);
+  },1000);
+  await otpSendSMS();
+}
+
+// Countdown timer display
+function otpStartTimer(seconds){
+  clearInterval(_otpState.timer);
+  let remaining=seconds;
+  const el=document.getElementById('otp-timer-val');
+  function tick(){
+    if(!el) return;
+    const m=Math.floor(remaining/60), s=remaining%60;
+    el.textContent=m+':'+(s<10?'0':'')+s;
+    if(remaining<=0){
+      clearInterval(_otpState.timer);
+      el.textContent='Expired';
+      el.style.color='#ef4444';
+    }
+    remaining--;
+  }
+  tick();
+  _otpState.timer=setInterval(tick,1000);
+}
+
 </script>
 </body>
 </html>
