@@ -307,21 +307,16 @@ input[type=number]{-moz-appearance:textfield;}
   <div class="otp-box">
     <div id="otp-error" class="login-error"></div>
 
-    <!-- Step 1: Enter username to look up mobile -->
+    <!-- Step 1: Enter mobile number directly -->
     <div class="otp-step active" id="otp-s1">
-      <div style="color:#94a3b8;font-size:12px;margin-bottom:20px;line-height:1.6;">
-        Enter your username. We'll send an OTP to the mobile number registered with your account.
+      <div style="color:#94a3b8;font-size:12px;margin-bottom:20px;line-height:1.7;">
+        Enter your registered mobile number. A 6-digit OTP will be sent via SMS.
       </div>
       <div class="login-field">
-        <label class="login-label">Username</label>
-        <input class="login-input" id="otp-username" placeholder="Enter your username" autocomplete="off">
+        <label class="login-label">Mobile Number</label>
+        <input class="login-input" id="otp-mobile-input" type="tel" placeholder="+91 9876543210" maxlength="13" autocomplete="tel" onkeydown="if(event.key==='Enter')otpSendStep1()">
       </div>
-      <div class="login-field" id="otp-mobile-display" style="display:none;">
-        <div style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);border-radius:10px;padding:10px 14px;color:#93c5fd;font-size:12px;">
-          📱 OTP will be sent to: <strong id="otp-masked-mobile"></strong>
-        </div>
-      </div>
-      <button class="login-btn" onclick="otpLookupUser()">Send OTP →</button>
+      <button class="login-btn" onclick="otpSendStep1()">Send OTP →</button>
       <button class="login-btn-sec" onclick="closeOtpScreen()">← Back to Login</button>
     </div>
 
@@ -338,23 +333,25 @@ input[type=number]{-moz-appearance:textfield;}
         <input class="otp-digit" id="od5" maxlength="1" type="tel" oninput="otpDigitInput(this,'od6')" onkeydown="otpDigitKey(event,this,'od4','od5')">
         <input class="otp-digit" id="od6" maxlength="1" type="tel" oninput="otpDigitInput(this,'')"    onkeydown="otpDigitKey(event,this,'od5','od6')">
       </div>
-      <div class="otp-timer">Expires in <span id="otp-timer-val">10:00</span> &nbsp;|&nbsp; <span style="color:#3b82f6;cursor:pointer;" onclick="otpResend()">Resend OTP</span></div>
+      <div class="otp-timer">Expires in <span id="otp-timer-val">10:00</span> &nbsp;|&nbsp;
+        <span style="color:#3b82f6;cursor:pointer;" onclick="otpResend()">Resend OTP</span>
+      </div>
       <button class="login-btn" style="margin-top:16px;" onclick="otpVerify()">Verify OTP →</button>
-      <button class="login-btn-sec" onclick="otpGoStep(1)">← Change Username</button>
+      <button class="login-btn-sec" onclick="otpGoStep(1)">← Change Number</button>
     </div>
 
     <!-- Step 3: Set new password -->
     <div class="otp-step" id="otp-s3">
       <div style="color:#94a3b8;font-size:12px;margin-bottom:20px;">
-        ✅ Identity verified. Set your new password below.
+        ✅ Identity verified! Set your new password below.
       </div>
       <div class="login-field">
         <label class="login-label">New Password</label>
-        <input class="login-input" id="otp-newpass" type="password" placeholder="Minimum 6 characters">
+        <input class="login-input" id="otp-newpass" type="password" placeholder="Minimum 6 characters" onkeydown="if(event.key==='Enter')document.getElementById('otp-newpass2').focus()">
       </div>
       <div class="login-field">
         <label class="login-label">Confirm New Password</label>
-        <input class="login-input" id="otp-newpass2" type="password" placeholder="Re-enter new password">
+        <input class="login-input" id="otp-newpass2" type="password" placeholder="Re-enter new password" onkeydown="if(event.key==='Enter')otpSetNewPassword()">
       </div>
       <button class="login-btn" onclick="otpSetNewPassword()">🔐 Save New Password →</button>
     </div>
@@ -806,25 +803,23 @@ async function showCompanySelectScreen(){
   document.getElementById('app').classList.add('hidden');
   const grid=document.getElementById('co-grid');
   const loading=document.getElementById('co-loading');
-  // Always show ➕ immediately so user is never stuck
-  if(grid){ grid.style.display='grid'; grid.innerHTML=buildNewCoCard(); }
-  if(loading){ loading.textContent='⏳ Loading companies…'; loading.style.display='block'; }
+  // Show ➕ immediately — user is never stuck even if network is slow
+  if(grid){grid.style.display='grid';grid.innerHTML=buildNewCoCard();}
+  if(loading){loading.textContent='⏳ Loading companies…';loading.style.display='block';}
   try{
-    // companies_registry has public SELECT — no auth needed
     const {data,error}=await Promise.race([
       getSupa().from('companies_registry').select('*').order('created_at',{ascending:true}),
       new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),6000))
     ]);
-    if(loading) loading.style.display='none';
-    if(error) throw error;
-    if(data && data.length>0){
+    if(loading)loading.style.display='none';
+    if(error)throw error;
+    if(data&&data.length>0){
       const companies=data.map(r=>({companyId:r.company_id,name:r.name,gstin:r.gstin||'',fy:r.fy||'2025-26'}));
-      if(grid) grid.innerHTML=companies.map((co,i)=>buildCoCard(co,i)).join('')+buildNewCoCard();
+      if(grid)grid.innerHTML=companies.map((co,i)=>buildCoCard(co,i)).join('')+buildNewCoCard();
     }
-    // if data.length===0, only ➕ shows — correct behaviour
   }catch(e){
-    if(loading){ loading.textContent='⚠️ Could not load companies: '+e.message; loading.style.display='block'; }
-    console.warn('Company list load error:',e.message);
+    if(loading){loading.textContent='⚠️ '+e.message;loading.style.display='block';}
+    console.warn('Company list error:',e.message);
   }
 }
 
@@ -1042,7 +1037,13 @@ async function doCreateCompany(){
 
   try{
     // ── Step 1: Supabase Auth signup ──────────────────────────────
-    const {data:authData,error:authErr}=await getSupa().auth.signUp({email,password:_ncData.password});
+    // Store phone in Supabase Auth user_metadata (used for OTP reset)
+    const rawMobile=(_ncData.mobile||'').trim();
+    const phoneE164=rawMobile&&!rawMobile.startsWith('+')?'+91'+rawMobile.replace(/^0/,''):rawMobile;
+    const {data:authData,error:authErr}=await getSupa().auth.signUp({
+      email, password:_ncData.password,
+      options:{ data:{ mobile: phoneE164 } }
+    });
 
     if(authErr){
       // If email already registered — sign in to get existing user_id
@@ -1154,13 +1155,19 @@ async function showCompanySwitcher(){
     return;
   }
   const rows=companies.map((co,i)=>`
-    <div onclick="switchToCompany('${co.companyId}')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;cursor:pointer;border:1.5px solid ${co.companyId===state.companyId?'#2563eb':'var(--bdr)'};background:${co.companyId===state.companyId?'#eff6ff':'#f8fafc'};margin-bottom:8px;transition:all .15s;">
-      <div style="font-size:22px;">${CO_ICONS[i%CO_ICONS.length]}</div>
-      <div style="flex:1;min-width:0;">
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;border:1.5px solid ${co.companyId===state.companyId?'#2563eb':'var(--bdr)'};background:${co.companyId===state.companyId?'#eff6ff':'#f8fafc'};margin-bottom:8px;">
+      <div style="font-size:22px;cursor:pointer;" onclick="switchToCompany('${co.companyId}')">${CO_ICONS[i%CO_ICONS.length]}</div>
+      <div style="flex:1;min-width:0;cursor:pointer;" onclick="switchToCompany('${co.companyId}')">
         <div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${co.name}</div>
         <div style="font-size:10px;color:var(--tm);">${co.gstin||'GSTIN not set'} · FY ${co.fy}</div>
       </div>
-      ${co.companyId===state.companyId?'<span style="font-size:11px;font-weight:700;color:#2563eb;white-space:nowrap;">✓ Active</span>':'<span style="font-size:11px;color:var(--tl);white-space:nowrap;">Switch →</span>'}
+      ${co.companyId===state.companyId
+        ? '<span style="font-size:11px;font-weight:700;color:#2563eb;white-space:nowrap;">✓ Active</span>'
+        : `<div style="display:flex;gap:6px;">
+            <span style="font-size:11px;color:var(--tl);white-space:nowrap;cursor:pointer;padding:4px 8px;border-radius:6px;background:#f1f5f9;" onclick="switchToCompany('${co.companyId}')">Switch →</span>
+            ${currentUser?.role==='admin'?`<span style="font-size:11px;color:#dc2626;white-space:nowrap;cursor:pointer;padding:4px 8px;border-radius:6px;background:#fef2f2;" onclick="closeModal();confirmDeleteCompany('${co.companyId}','${(co.name||'').replace(/'/g,"\\'")}')">🗑</span>`:''}
+           </div>`
+      }
     </div>`).join('');
   openModal('🔄 Switch Company',`
     <div style="font-size:12px;color:var(--tm);margin-bottom:12px;">Current session saved automatically before switching.</div>
@@ -1186,6 +1193,75 @@ async function switchToCompany(companyId){
     showToast(`🔄 Switched to ${state.company}`,'#2563eb');
     navigate('dashboard');
   }catch(e){showToast('Switch error: '+e.message,'#dc2626');}
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  DELETE COMPANY (Admin only)
+// ══════════════════════════════════════════════════════════════════
+async function confirmDeleteCompany(companyId, companyName){
+  if(currentUser?.role !== 'admin'){
+    showToast('Only admins can delete a company.','#dc2626'); return;
+  }
+  openModal('🗑 Delete Company', `
+    <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;padding:14px 16px;margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:700;color:#991b1b;margin-bottom:6px;">⚠️ This is permanent and cannot be undone!</div>
+      <div style="font-size:12px;color:#7f1d1d;">This will permanently delete:</div>
+      <ul style="font-size:12px;color:#7f1d1d;margin:6px 0 0 16px;line-height:1.8;">
+        <li>All accounting data (vouchers, accounts, invoices)</li>
+        <li>All users belonging to this company</li>
+        <li>The company registration</li>
+      </ul>
+    </div>
+    <div style="font-size:13px;margin-bottom:10px;">Type <strong>${companyName}</strong> to confirm:</div>
+    <input class="fc" id="del-co-confirm" placeholder="Type company name exactly..." style="margin-bottom:14px;">
+    <div id="del-co-err" style="color:#dc2626;font-size:12px;margin-bottom:10px;display:none;"></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-d" style="flex:1;" onclick="executeDeleteCompany('${companyId}','${companyName.replace(/'/g,"\'")}')">🗑 Delete Permanently</button>
+      <button class="btn btn-g" onclick="closeModal()">Cancel</button>
+    </div>
+  `);
+}
+
+async function executeDeleteCompany(companyId, companyName){
+  const typed = document.getElementById('del-co-confirm')?.value?.trim();
+  const errEl = document.getElementById('del-co-err');
+  if(typed !== companyName){
+    if(errEl){errEl.textContent='Company name does not match. Please type it exactly.';errEl.style.display='block';}
+    return;
+  }
+  const btn = document.querySelector('#modal .btn-d');
+  if(btn){btn.disabled=true;btn.textContent='Deleting…';}
+  try{
+    const isCurrentCompany = companyId === state.companyId;
+    // Step 1: Delete app_data
+    await getSupa().from('app_data').delete().eq('id', companyId);
+    // Step 2: Delete app_users (cascade would handle this but be explicit)
+    await getSupa().from('app_users').delete().eq('company_id', companyId);
+    // Step 3: Delete companies_registry
+    const {error} = await getSupa().from('companies_registry').delete().eq('company_id', companyId);
+    if(error) throw new Error('Could not delete company: ' + error.message);
+
+    closeModal();
+    logAudit('Company Deleted', 'Company: ' + companyName);
+    showToast('🗑 Company "' + companyName + '" deleted.', '#dc2626');
+
+    if(isCurrentCompany){
+      // Deleted current company — sign out and go back to company select
+      await getSupa().auth.signOut();
+      currentUser = null; _selectedCompanyId = null;
+      sessionStorage.clear();
+      document.getElementById('app').classList.add('hidden');
+      setTimeout(()=>showCompanySelectScreen(), 800);
+    } else {
+      // Deleted a different company — refresh switcher
+      navigate('settings');
+    }
+  }catch(e){
+    if(btn){btn.disabled=false;btn.textContent='🗑 Delete Permanently';}
+    const errEl2 = document.getElementById('del-co-err');
+    if(errEl2){errEl2.textContent='Error: '+e.message;errEl2.style.display='block';}
+    console.error('Delete company error:',e);
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -1236,15 +1312,21 @@ function showUserMenu(){
 async function doLogout(){
   closeModal();
   clearTimeout(_sessionTimer);
-  logAudit('Logout', `User ${currentUser?.username||'?'} logged out`);
-  try{ await saveState(); }catch(_){}
-  try{ await getSupa().auth.signOut(); }catch(_){}
-  currentUser=null; _selectedCompanyId=null;
+
+  // ── Step 1: Clear UI immediately — never block on network ──
+  const username = currentUser?.username||'?';
+  currentUser = null;
+  _selectedCompanyId = null;
   sessionStorage.removeItem('loggedInUser');
   sessionStorage.removeItem('companyId');
   document.getElementById('app').classList.add('hidden');
   document.getElementById('login-wrap').classList.add('hidden');
   showCompanySelectScreen();
+
+  // ── Step 2: Background cleanup (non-blocking) ──
+  try{ logAudit('Logout', 'User '+username+' logged out'); }catch(_){}
+  try{ await Promise.race([saveState(), new Promise(r=>setTimeout(r,3000))]); }catch(_){}
+  try{ await getSupa().auth.signOut(); }catch(_){}
 }
 
 
@@ -4737,10 +4819,90 @@ function importJSON(input){
 // ══════════════════════════════════════════════════════════════════
 //  PAGE: SETTINGS
 // ══════════════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════════
+//  MY PROFILE — update mobile + password for logged-in user
+// ══════════════════════════════════════════════════════════════════
+async function updateMyProfile(){
+  const mobile = (eid('my-mobile')?.value||'').trim();
+  const pass   = eid('my-pass')?.value||'';
+  const pass2  = eid('my-pass2')?.value||'';
+  const msgEl  = eid('my-profile-msg');
+  const btn    = document.querySelector('#my-profile-msg ~ button');
+
+  if(pass && pass !== pass2){
+    if(msgEl){msgEl.textContent='❌ Passwords do not match.';msgEl.style.color='#dc2626';msgEl.style.display='block';}
+    return;
+  }
+  if(pass && pass.length < 6){
+    if(msgEl){msgEl.textContent='❌ Password must be at least 6 characters.';msgEl.style.color='#dc2626';msgEl.style.display='block';}
+    return;
+  }
+  if(btn){btn.disabled=true;btn.textContent='Saving…';}
+  try{
+    const updates = {};
+    if(pass) updates.password = pass;
+    const mobileE164 = mobile && !mobile.startsWith('+') ? '+91'+mobile.replace(/^0/,'') : mobile;
+    if(mobile) updates.data = { mobile: mobileE164 };
+
+    if(Object.keys(updates).length === 0){
+      if(msgEl){msgEl.textContent='ℹ️ Nothing to update.';msgEl.style.color='#6b7280';msgEl.style.display='block';}
+      return;
+    }
+
+    // Update Supabase Auth (password + metadata)
+    const {error: authErr} = await getSupa().auth.updateUser(updates);
+    if(authErr) throw new Error('Auth update failed: ' + authErr.message);
+
+    // Update app_users mobile column
+    if(mobile){
+      await getSupa().from('app_users')
+        .update({mobile: mobileE164})
+        .eq('username', currentUser.username);
+      if(currentUser) currentUser.mobile = mobileE164;
+    }
+
+    if(msgEl){msgEl.textContent='✅ Profile updated successfully!';msgEl.style.color='#059669';msgEl.style.display='block';}
+    if(pass){
+      // Clear password fields after change
+      if(eid('my-pass')) eid('my-pass').value='';
+      if(eid('my-pass2')) eid('my-pass2').value='';
+    }
+    logAudit('Profile Updated', 'User '+currentUser?.username+' updated their profile');
+    setTimeout(()=>{if(msgEl)msgEl.style.display='none';},4000);
+  }catch(e){
+    if(msgEl){msgEl.textContent='❌ '+e.message;msgEl.style.color='#dc2626';msgEl.style.display='block';}
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='💾 Save My Profile';}
+  }
+}
+
 function pgSettings(){
   const fyList=generateFYList();const stateOpts=INDIAN_STATES.map(s=>`<option value="${s}" ${s===(state.companyState||'Maharashtra')?'selected':''}>${s}</option>`).join('');
   eid('content').innerHTML=`
   <div style="max-width:700px;">
+    <div class="card" style="padding:22px;margin-bottom:14px;border:1.5px solid #bfdbfe;">
+      <div style="font-size:15px;font-weight:700;margin-bottom:4px;">👤 My Profile</div>
+      <div style="font-size:12px;color:var(--tm);margin-bottom:14px;">Logged in as <strong>${currentUser?.username||'?'}</strong> · Role: <strong>${currentUser?.role||'?'}</strong></div>
+      <div class="fg">
+        <div class="fgr">
+          <label class="fl">📱 Mobile Number <small style="color:var(--tm);">(used for OTP password reset)</small></label>
+          <input class="fc" id="my-mobile" type="tel" placeholder="+91 9876543210" maxlength="13"
+            value="${currentUser?.mobile||''}">
+        </div>
+        <div class="fgr">
+          <label class="fl">🔑 New Password <small style="color:var(--tm);">(leave blank to keep current)</small></label>
+          <input class="fc" type="password" id="my-pass" placeholder="Enter new password (min 6 chars)">
+        </div>
+        <div class="fgr">
+          <label class="fl">🔑 Confirm New Password</label>
+          <input class="fc" type="password" id="my-pass2" placeholder="Re-enter new password">
+        </div>
+      </div>
+      <div id="my-profile-msg" style="font-size:12px;margin-top:8px;display:none;"></div>
+      <button class="btn btn-p" style="margin-top:12px;" onclick="updateMyProfile()">💾 Save My Profile</button>
+    </div>
+
     <div class="card" style="padding:22px;margin-bottom:14px;">
       <div style="font-size:15px;font-weight:700;margin-bottom:14px;">🏢 Company Settings</div>
       <div class="fg">
@@ -4763,7 +4925,7 @@ function pgSettings(){
     <div class="card" style="padding:22px;margin-bottom:14px;">
       <div style="font-size:15px;font-weight:700;margin-bottom:14px;">👥 User Management</div>
       <div id="user-list-wrap">Loading...</div>
-      <button class="btn btn-p" style="margin-top:12px;" onclick="openAddUserForm()">+ Add New User</button>
+      ${currentUser?.role==='admin'?'<button class="btn btn-p" style="margin-top:12px;" onclick="openAddUserForm()">+ Add New User</button>':''}
     </div>
 
     <div class="card" style="padding:22px;margin-bottom:14px;">
@@ -4785,8 +4947,24 @@ function pgSettings(){
 
     <div class="card" style="padding:22px;border:2px solid #fca5a5;">
       <div style="font-size:15px;font-weight:700;margin-bottom:4px;color:var(--bad);">⚠ Danger Zone</div>
-      <div style="font-size:12px;color:var(--tm);margin-bottom:12px;">Permanently delete all accounting data and reset to defaults. This cannot be undone.</div>
-      <button class="btn btn-d" onclick="resetAllData()">🗑 Reset All Data</button>
+      <div style="font-size:12px;color:var(--tm);margin-bottom:16px;">Irreversible actions — proceed with caution.</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;">
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#991b1b;">🗑 Reset All Data</div>
+            <div style="font-size:11px;color:#7f1d1d;margin-top:2px;">Delete all vouchers, accounts, vendors, customers. Cannot be undone.</div>
+          </div>
+          <button class="btn btn-d btn-sm" onclick="resetAllData()">Reset</button>
+        </div>
+        ${currentUser?.role==='admin'?`
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;">
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#991b1b;">🏚 Delete This Company</div>
+            <div style="font-size:11px;color:#7f1d1d;margin-top:2px;">Permanently delete <strong>${state.company}</strong>, all its data and all its users.</div>
+          </div>
+          <button class="btn btn-d btn-sm" onclick="confirmDeleteCompany('${state.companyId}','${(state.company||'').replace(/'/g,"\\'")}')">Delete</button>
+        </div>`:''}
+      </div>
     </div>
   </div>`;
   loadUserList();
@@ -4799,7 +4977,7 @@ async function loadUserList(){
     wrap.innerHTML=users.length?`<div class="card"><table class="tbl">
       <thead><tr><th>Username</th><th>Role</th><th class="no-print">Action</th></tr></thead>
       <tbody>${users.map(u=>`<tr><td class="fw-bold">${u.username}</td><td><span class="badge bb">${u.role||'user'}</span></td>
-        <td>${u.username!==currentUser?.username?`<button class="btn btn-d btn-sm" onclick="delUser('${u.username}')">Del</button>`:'<span class="badge bg-">You</span>'}</td>
+        <td>${u.username!==currentUser?.username ? (currentUser?.role==='admin' ? `<button class="btn btn-d btn-sm" onclick="delUser('${u.username}')">Del</button>` : '<span style="font-size:11px;color:var(--tm);">—</span>') : '<span class="badge bg-">You</span>'}</td>
       </tr>`).join('')}</tbody></table></div>`:'<div class="al al-i">No users found.</div>';
   }catch(e){if(wrap)wrap.innerHTML='<div class="al al-d">Error loading users</div>';}
 }
@@ -4825,46 +5003,100 @@ function openAddUserForm(){
     <button class="btn btn-g" onclick="closeModal()">Cancel</button>
   </div>`);
 }
+
+// ══════════════════════════════════════════════════════════════════
+//  SHARED HELPER: get or create Supabase Auth user, return client
+//  with their session so self-insert RLS passes
+// ══════════════════════════════════════════════════════════════════
+async function getOrCreateAuthUser(email, password, mobile) {
+  const ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRmc2x0eGVoZmRtbnd4a3dlY3d3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NTg0MDgsImV4cCI6MjA4NzQzNDQwOH0.Xe8JTV2Gw1WfCx-0U4im64dZ8aw_wYWhrFqciDrX990';
+  const URL  = 'https://dfsltxehfdmnwxkwecww.supabase.co';
+  // Always use a fresh isolated client — never touches admin session
+  const tc = supabase.createClient(URL, ANON, {auth:{persistSession:false,autoRefreshToken:false}});
+
+  let userId = null;
+  let insertClient = null;  // client that holds new user's session
+
+  // Step 1: Try signup
+  const {data:sd, error:se} = await tc.auth.signUp({
+    email, password,
+    options:{ data:{ mobile: mobile||'' } }
+  });
+
+  if (!se) {
+    // Fresh signup succeeded
+    if (!sd.user) throw new Error('Signup returned no user. Go to Supabase → Auth → Settings → Email and turn OFF "Enable email confirmations".');
+    userId = sd.user.id;
+    if (sd.session) await tc.auth.setSession(sd.session);
+    insertClient = sd.session ? tc : getSupa();
+  } else if (se.message.includes('already registered') || se.message.includes('already been registered')) {
+    // Ghost user from a previous failed attempt — sign in to reclaim
+    const {data:ld, error:le} = await tc.auth.signInWithPassword({email, password});
+    if (le) {
+      // Wrong password — this username is taken with a different password
+      throw new Error('Username already exists with a different password. Use a different username.');
+    }
+    userId = ld.user.id;
+    // Check if this auth user already has a working app_users row
+    const {data:existing} = await getSupa().from('app_users').select('username,company_id').eq('user_id', userId).maybeSingle();
+    if (existing) {
+      throw new Error('Username "' + email.split('_')[0] + '" already exists in this or another company. Use a different username.');
+    }
+    if (ld.session) await tc.auth.setSession(ld.session);
+    insertClient = ld.session ? tc : getSupa();
+  } else {
+    throw new Error('Auth error: ' + se.message);
+  }
+
+  return { userId, insertClient };
+}
+
 async function addNewUser(){
   const u=sanitizeInput(eid('nu-user').value.trim()),r=eid('nu-role').value;
   const p=eid('nu-pass').value,p2=eid('nu-pass2').value;
   if(!u||!p)return showAlert('Username and password required');
   if(p!==p2)return showAlert('Passwords do not match');
   if(p.length<6)return showAlert('Password must be at least 6 characters');
+  const btn=document.querySelector('#modal .btn-p');
+  if(btn){btn.disabled=true;btn.textContent='Creating…';}
   try{
-    const email=u.toLowerCase()+'_'+(state.companyId||'').toLowerCase()+'@accountally.app';
-    // Use a separate temp client so admin session is NOT replaced
-    const tempClient=supabase.createClient(getSupa().supabaseUrl||'https://dfsltxehfdmnwxkwecww.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRmc2x0eGVoZmRtbnd4a3dlY3d3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NTg0MDgsImV4cCI6MjA4NzQzNDQwOH0.Xe8JTV2Gw1WfCx-0U4im64dZ8aw_wYWhrFqciDrX990',
-      {auth:{persistSession:false,autoRefreshToken:false}}
-    );
-    const {data:authData,error:authErr}=await tempClient.auth.signUp({email,password:p});
-    if(authErr) throw new Error('Auth error: '+authErr.message);
-    if(!authData.user) throw new Error('Signup failed — check Supabase email confirmation is OFF');
-    // Insert into app_users (admin's session handles this, RLS: same company)
-    const mobVal=(eid('nu-mobile')?.value||'').trim();
+    const username=u.toLowerCase();
+    const companyId=state.companyId||_selectedCompanyId;
+    const email=username+'_'+companyId.toLowerCase()+'@accountally.app';
+    const rawMob=(eid('nu-mobile')?.value||'').trim();
+    const mobile=rawMob&&!rawMob.startsWith('+')?'+91'+rawMob.replace(/^0/,''):rawMob;
+    const fullName=eid('nu-fname')?.value.trim()||username;
+
+    // Step 1: Create auth user via isolated tempClient (never touches admin session)
+    const ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRmc2x0eGVoZmRtbnd4a3dlY3d3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NTg0MDgsImV4cCI6MjA4NzQzNDQwOH0.Xe8JTV2Gw1WfCx-0U4im64dZ8aw_wYWhrFqciDrX990';
+    const tc=supabase.createClient('https://dfsltxehfdmnwxkwecww.supabase.co',ANON,{auth:{persistSession:false,autoRefreshToken:false}});
+    const {data:sd,error:se}=await tc.auth.signUp({email,password:p,options:{data:{mobile}}});
+    if(se) throw new Error('Auth signup failed: '+se.message);
+    if(!sd.user) throw new Error('Signup returned no user — turn OFF email confirmations in Supabase Auth Settings.');
+    const userId=sd.user.id;
+
+    // Step 2: Insert app_users using ADMIN session (RLS: "same company insert" policy allows this)
     const {error:userErr}=await getSupa().from('app_users').insert({
-      username: u.toLowerCase(),
-      user_id: authData.user.id,
-      company_id: state.companyId||_selectedCompanyId,
-      role: r,
-      mobile: mobVal
+      username, user_id:userId, company_id:companyId, role:r, mobile
     });
-    if(userErr) throw new Error('Could not save user: '+userErr.message);
-    const fullName=eid('nu-fname')?.value.trim()||u;
+    if(userErr) throw new Error('Could not save user profile: '+userErr.message);
+
     if(!state.appUsers)state.appUsers=[];
-    if(!state.appUsers.find(x=>x.username===u.toLowerCase())){
-      state.appUsers.push({username:u.toLowerCase(),role:r,fullName,createdAt:new Date().toISOString()});
+    if(!state.appUsers.find(x=>x.username===username)){
+      state.appUsers.push({username,role:r,fullName,createdAt:new Date().toISOString()});
     }
     scheduleSave();
     closeModal();
-    showToast('✅ User "'+u+'" created successfully!','#059669');
+    showToast('✅ User "'+username+'" created successfully!','#059669');
     loadUserList();
   }catch(e){
-    showAlert('Error creating user: '+(e.message||'Please check your connection and try again.'));
+    showAlert('Error creating user: '+(e.message||'Check your connection and try again.'));
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='💾 Create User';}
   }
 }
 async function delUser(username){
+  if(currentUser?.role!=='admin'){showToast('Only admins can delete users.','#dc2626');return;}
   if(!confirm(`Delete user "${username}"?`))return;
   await DB.del('users',username);
   loadUserList();
@@ -5672,8 +5904,11 @@ function pgUserMgmt(){
       <td class="tm-" style="font-size:11px;">${roleInfo.desc}</td>
       <td class="tm-" style="font-size:11px;">${u.createdAt?fmtD(u.createdAt.slice(0,10)):'—'}</td>
       <td>
-        ${!isYou?`<button class="btn btn-g btn-sm" onclick="editAppUser('${u.username}')">✏️ Edit</button>
-        <button class="btn btn-d btn-sm" onclick="deleteAppUser('${u.username}')">🗑 Delete</button>`:'<span class="tm-" style="font-size:11px;">Current user</span>'}
+        ${isYou ? '<span class="tm-" style="font-size:11px;">Current user</span>' :
+          currentUser?.role==='admin' ?
+            `<button class="btn btn-g btn-sm" onclick="editAppUser('${u.username}')">✏️ Edit</button>
+             <button class="btn btn-d btn-sm" onclick="deleteAppUser('${u.username}')">🗑 Delete</button>` :
+          '<span style="font-size:11px;color:var(--tm);">—</span>'}
       </td>
     </tr>`;
   }).join('');
@@ -5715,8 +5950,8 @@ function openAddUser(editUsername){
     <div class="fg">
       <div class="fgr"><label class="fl">Username *</label>
         <input class="fc" id="nu-user" value="${u.username||''}" placeholder="e.g. accountant1" ${isEdit?'readonly':''}></div>
-      <div class="fgr"><label class="fl">${isEdit?'New Password (leave blank to keep)':'Password *'}</label>
-        <input class="fc" id="nu-pass" type="password" placeholder="${isEdit?'Leave blank to keep current':'Minimum 4 characters'}"></div>
+      <div class="fgr"><label class="fl">Full Name</label>
+        <input class="fc" id="nu-name" value="${u.fullName||''}" placeholder="User's full name"></div>
       <div class="fgr"><label class="fl">Role *</label>
         <select class="fc" id="nu-role">
           <option value="admin" ${(u.role||'')==='admin'?'selected':''}>👑 Admin — Full access</option>
@@ -5724,11 +5959,16 @@ function openAddUser(editUsername){
           <option value="viewer" ${(u.role||'')==='viewer'?'selected':''}>👁 Viewer — Read only</option>
         </select>
       </div>
-      <div class="fgr"><label class="fl">Full Name</label>
-        <input class="fc" id="nu-name" value="${u.fullName||''}" placeholder="User's full name"></div>
+      ${!isEdit?`
+      <div class="fgr" style="grid-column:span 2;"><label class="fl">Mobile Number <small style="color:var(--tm);">(for OTP password reset)</small></label>
+        <input class="fc" id="nu-mobile" type="tel" placeholder="+91 9876543210" maxlength="13"></div>
+      <div class="fgr"><label class="fl">Password *</label>
+        <input class="fc" id="nu-pass" type="password" placeholder="Minimum 6 characters"></div>
+      <div class="fgr"><label class="fl">Confirm Password *</label>
+        <input class="fc" id="nu-pass2" type="password" placeholder="Re-enter password"></div>`:''}
     </div>
     <div style="margin-top:16px;display:flex;gap:8px;">
-      <button class="btn btn-p" onclick="saveAppUser('${isEdit?editUsername:''}')">💾 Save User</button>
+      <button class="btn btn-p" onclick="saveAppUser('${isEdit?editUsername:''}')">💾 ${isEdit?'Update User':'Create User'}</button>
       <button class="btn btn-g" onclick="closeModal()">Cancel</button>
     </div>
   `);
@@ -5736,45 +5976,51 @@ function openAddUser(editUsername){
 
 async function saveAppUser(editUsername){
   const username=document.getElementById('nu-user')?.value.trim();
-  const pass=document.getElementById('nu-pass')?.value;
+  const pass=document.getElementById('nu-pass')?.value||'';
+  const pass2=document.getElementById('nu-pass2')?.value||'';
   const role=document.getElementById('nu-role')?.value;
   const fullName=document.getElementById('nu-name')?.value.trim()||username;
   if(!username){showAlert('Username required.');return;}
   if(!editUsername&&!pass){showAlert('Password required for new user.');return;}
+  if(!editUsername&&pass!==pass2){showAlert('Passwords do not match.');return;}
   if(pass&&pass.length<6){showAlert('Password must be at least 6 characters.');return;}
   if(!role){showAlert('Select a role.');return;}
   if(!state.appUsers)state.appUsers=[];
   try{
     if(editUsername){
-      // Editing existing user — update role only (password changes via Supabase Auth)
+      // Edit: update role and fullName only
       const idx=state.appUsers.findIndex(u=>u.username===editUsername);
       const updatedUser={username:editUsername,role,fullName,
         createdAt:state.appUsers[idx]?.createdAt||new Date().toISOString()};
-      await DB.set('users',editUsername,{username:editUsername,role,
-        companyId:state.companyId||_selectedCompanyId});
+      const {error:updErr}=await getSupa().from('app_users')
+        .update({role}).eq('username',editUsername);
+      if(updErr) throw new Error('DB error: '+updErr.message);
       if(idx>=0) state.appUsers[idx]=updatedUser;
       else state.appUsers.push(updatedUser);
-      if(pass){
-        showToast('⚠️ Password changes must be done by the user via Supabase directly.','#d97706');
-      }
     } else {
-      // Check for duplicate username in this company first
-      if(state.appUsers && state.appUsers.find(u=>u.username.toLowerCase()===username.toLowerCase())){
-        showAlert('Username "'+username+'" already exists in this company. Choose a different username.');return;
+      // New user — check duplicate first
+      if(state.appUsers.find(u=>u.username.toLowerCase()===username.toLowerCase())){
+        showAlert('Username "'+username+'" already exists. Choose a different username.');return;
       }
-      // Adding new user via Supabase Auth (temp client to protect admin session)
-      const cid=(state.companyId||_selectedCompanyId||'').toLowerCase();
+      const companyId2=state.companyId||_selectedCompanyId;
+      const cid=(companyId2||'').toLowerCase();
       const email=username.toLowerCase()+'_'+cid+'@accountally.app';
-      const tempClient=supabase.createClient('https://dfsltxehfdmnwxkwecww.supabase.co',
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRmc2x0eGVoZmRtbnd4a3dlY3d3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NTg0MDgsImV4cCI6MjA4NzQzNDQwOH0.Xe8JTV2Gw1WfCx-0U4im64dZ8aw_wYWhrFqciDrX990',
-        {auth:{persistSession:false,autoRefreshToken:false}}
-      );
-      const {data:authData,error:authErr}=await tempClient.auth.signUp({email,password:pass});
-      if(authErr) throw new Error('Auth error: '+authErr.message);
-      if(!authData.user) throw new Error('Signup failed');
+      const rawMobile=(document.getElementById('nu-mobile')?.value||'').trim();
+      const phoneE164=rawMobile&&!rawMobile.startsWith('+')?'+91'+rawMobile.replace(/^0/,''):rawMobile;
+
+      // Create auth user via isolated tempClient
+      const ANON2='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRmc2x0eGVoZmRtbnd4a3dlY3d3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NTg0MDgsImV4cCI6MjA4NzQzNDQwOH0.Xe8JTV2Gw1WfCx-0U4im64dZ8aw_wYWhrFqciDrX990';
+      const tc2=supabase.createClient('https://dfsltxehfdmnwxkwecww.supabase.co',ANON2,{auth:{persistSession:false,autoRefreshToken:false}});
+      const {data:sd2,error:se2}=await tc2.auth.signUp({email,password:pass,options:{data:{mobile:phoneE164}}});
+      if(se2) throw new Error('Auth signup failed: '+se2.message);
+      if(!sd2.user) throw new Error('Signup failed — ensure email confirmations are OFF in Supabase.');
+      // Insert using ADMIN session (RLS: "same company insert" policy allows this)
       const {error:insErr}=await getSupa().from('app_users').insert({
-        username:username.toLowerCase(), user_id:authData.user.id,
-        company_id:state.companyId||_selectedCompanyId, role
+        username:username.toLowerCase(),
+        user_id:sd2.user.id,
+        company_id:companyId2,
+        role,
+        mobile:phoneE164
       });
       if(insErr) throw new Error('DB error: '+insErr.message);
       const newUser={username:username.toLowerCase(),role,fullName,
@@ -5795,6 +6041,7 @@ async function saveAppUser(editUsername){
 
 function editAppUser(username){openAddUser(username);}
 async function deleteAppUser(username){
+  if(currentUser?.role!=='admin'){showToast('Only admins can delete users.','#dc2626');return;}
   if(!confirm('Delete user "'+username+'"? They will no longer be able to log in.'))return;
   state.appUsers=state.appUsers.filter(u=>u.username!==username);
   await DB.del('users',username);
@@ -7065,25 +7312,25 @@ document.getElementById('modal').addEventListener('click',function(e){
 init();
 
 // ══════════════════════════════════════════════════════════════════
-//  OTP PASSWORD RESET — v12
-//  Uses Supabase Phone OTP (requires Twilio configured in Supabase)
-//  Flow: Username lookup → Mobile OTP → Set new password
+//  OTP PASSWORD RESET — v13
+//  Flow: Enter mobile → Supabase sends SMS OTP → Verify → New password
+//  Requires: Twilio configured in Supabase → Authentication → Settings
 // ══════════════════════════════════════════════════════════════════
 
-let _otpState = { username:'', mobile:'', timer:null, resendCooldown:0 };
+let _otpState = { mobile:'', phoneE164:'', timer:null, resendCooldown:0 };
 
 function openOtpScreen(){
   document.getElementById('login-wrap').classList.add('hidden');
   document.getElementById('otp-wrap').classList.remove('hidden');
   otpGoStep(1);
-  document.getElementById('otp-username').focus();
+  setTimeout(()=>document.getElementById('otp-mobile-input')?.focus(), 100);
 }
 
 function closeOtpScreen(){
   document.getElementById('otp-wrap').classList.add('hidden');
   document.getElementById('login-wrap').classList.remove('hidden');
   clearInterval(_otpState.timer);
-  _otpState = { username:'', mobile:'', timer:null, resendCooldown:0 };
+  _otpState = { mobile:'', phoneE164:'', timer:null, resendCooldown:0 };
 }
 
 function otpGoStep(n){
@@ -7092,164 +7339,150 @@ function otpGoStep(n){
     if(el) el.classList.toggle('active', i===n);
   });
   const err=document.getElementById('otp-error');
-  if(err){err.textContent='';err.style.display='none';}
+  if(err){ err.textContent=''; err.style.display='none'; }
 }
 
 function otpShowError(msg){
   const err=document.getElementById('otp-error');
-  if(err){err.textContent=msg;err.style.display='block';}
+  if(err){ err.textContent=msg; err.style.display='block'; }
 }
 
-// Step 1: Look up username → fetch masked mobile from app_users
-async function otpLookupUser(){
-  const u=(document.getElementById('otp-username')?.value||'').trim().toLowerCase();
-  if(!u){otpShowError('Please enter your username.');return;}
-  const btn=document.querySelector('#otp-s1 .login-btn');
-  if(btn){btn.disabled=true;btn.textContent='Looking up…';}
-  try{
-    // Fetch from app_users — public select needed (anon key used before login)
-    const {data,error}=await getSupa()
-      .from('app_users').select('username,mobile,company_id')
-      .eq('username',u).maybeSingle();
-    if(error||!data){
-      otpShowError('Username not found. Check spelling and try again.');return;
-    }
-    if(!data.mobile||data.mobile.trim()===''){
-      otpShowError('No mobile number linked to this account. Contact your admin to add your mobile in User Management.');return;
-    }
-    _otpState.username = u;
-    _otpState.mobile = data.mobile.trim();
-    _otpState.companyId = data.company_id;
-    // Show masked mobile
-    const m=_otpState.mobile;
-    const masked = m.length>=4 ? m.slice(0,-4).replace(/\d/g,'*')+m.slice(-4) : '****'+m.slice(-2);
-    document.getElementById('otp-masked-mobile').textContent = masked;
-    document.getElementById('otp-mobile-display').style.display='block';
-    // Auto-send OTP
-    await otpSendSMS();
-  }catch(e){
-    otpShowError('Error: '+(e.message||'Could not reach server.'));
-  }finally{
-    if(btn){btn.disabled=false;btn.textContent='Send OTP →';}
+// Step 1: User enters mobile number → send OTP
+async function otpSendStep1(){
+  const raw=(document.getElementById('otp-mobile-input')?.value||'').trim();
+  if(!raw){ otpShowError('Please enter your mobile number.'); return; }
+
+  // Normalise to E.164 — prefix +91 for 10-digit Indian numbers
+  let phone = raw.replace(/\s|-/g,'');
+  if(!phone.startsWith('+')){ phone = '+91'+phone.replace(/^0/,''); }
+  if(!/^\+\d{10,15}$/.test(phone)){
+    otpShowError('Enter a valid mobile number (10 digits, e.g. 9876543210).');
+    return;
   }
-}
 
-// Send OTP via Supabase phone signInWithOtp
-async function otpSendSMS(){
+  _otpState.mobile  = raw;
+  _otpState.phoneE164 = phone;
+
   const btn=document.querySelector('#otp-s1 .login-btn');
-  if(btn){btn.disabled=true;btn.textContent='Sending OTP…';}
-  try{
-    // Normalize phone — ensure +91 prefix for Indian numbers
-    let phone = _otpState.mobile;
-    if(!phone.startsWith('+')) phone = '+91'+phone.replace(/^0/,'');
-    _otpState.phoneE164 = phone;
+  if(btn){ btn.disabled=true; btn.textContent='Sending OTP…'; }
 
-    const {error}=await getSupa().auth.signInWithOtp({
-      phone: phone
-    });
+  try{
+    const {error} = await getSupa().auth.signInWithOtp({ phone });
     if(error) throw new Error(error.message);
 
-    // Move to step 2 — OTP entry
-    document.getElementById('otp-sent-to').textContent = _otpState.mobile.slice(0,-4).replace(/\d/g,'*')+_otpState.mobile.slice(-4);
+    // Show masked number in step 2
+    const masked = phone.slice(0,-4).replace(/\d/g,'*') + phone.slice(-4);
+    document.getElementById('otp-sent-to').textContent = masked;
+
     otpGoStep(2);
     ['od1','od2','od3','od4','od5','od6'].forEach(id=>{
-      const el=document.getElementById(id);
-      if(el) el.value='';
+      const el=document.getElementById(id); if(el) el.value='';
     });
     document.getElementById('od1')?.focus();
-    otpStartTimer(600); // 10 minutes
+    otpStartTimer(600);
+
   }catch(e){
-    otpShowError('Failed to send OTP: '+e.message+'\n\nMake sure Twilio is configured in Supabase → Authentication → Settings → SMS Provider.');
+    let msg = e.message||'Failed to send OTP.';
+    if(msg.includes('SMS') || msg.includes('provider') || msg.includes('Twilio')){
+      msg = '⚠️ SMS service not configured yet. Ask your admin to set up Twilio in Supabase → Authentication → Settings → SMS Provider.';
+    } else if(msg.includes('rate') || msg.includes('limit')){
+      msg = 'Too many attempts. Please wait a minute and try again.';
+    }
+    otpShowError(msg);
   }finally{
-    if(btn){btn.disabled=false;btn.textContent='Send OTP →';}
+    if(btn){ btn.disabled=false; btn.textContent='Send OTP →'; }
   }
 }
 
-// OTP digit input — auto-advance and handle backspace
+// OTP digit input — auto-advance, auto-submit when all 6 filled
 function otpDigitInput(el, nextId){
-  el.value=el.value.replace(/[^0-9]/g,'');
+  el.value = el.value.replace(/[^0-9]/g,'');
   if(el.value && nextId) document.getElementById(nextId)?.focus();
-  // Auto-verify when all 6 digits filled
-  const all=['od1','od2','od3','od4','od5','od6'];
+  const all = ['od1','od2','od3','od4','od5','od6'];
   if(all.every(id=>(document.getElementById(id)?.value||'').length===1)) otpVerify();
 }
-function otpDigitKey(e, el, prevId, selfId){
-  if(e.key==='Backspace'&&!el.value&&prevId) document.getElementById(prevId)?.focus();
-  if(e.key==='ArrowLeft'&&prevId) document.getElementById(prevId)?.focus();
+function otpDigitKey(e, el, prevId){
+  if(e.key==='Backspace' && !el.value && prevId) document.getElementById(prevId)?.focus();
+  if(e.key==='ArrowLeft' && prevId) document.getElementById(prevId)?.focus();
 }
 
-// Step 2: Verify OTP entered by user
+// Step 2: Verify OTP
 async function otpVerify(){
   const otp=['od1','od2','od3','od4','od5','od6'].map(id=>document.getElementById(id)?.value||'').join('');
-  if(otp.length!==6){otpShowError('Enter all 6 digits of the OTP.');return;}
+  if(otp.length!==6){ otpShowError('Enter all 6 digits.'); return; }
+
   const btn=document.querySelector('#otp-s2 .login-btn');
-  if(btn){btn.disabled=true;btn.textContent='Verifying…';}
+  if(btn){ btn.disabled=true; btn.textContent='Verifying…'; }
+
   try{
-    const {data,error}=await getSupa().auth.verifyOtp({
+    const {data, error} = await getSupa().auth.verifyOtp({
       phone: _otpState.phoneE164,
       token: otp,
       type: 'sms'
     });
     if(error) throw new Error(error.message);
+
     clearInterval(_otpState.timer);
-    // OTP verified — user is now signed in, move to password reset step
     otpGoStep(3);
     document.getElementById('otp-newpass')?.focus();
+
   }catch(e){
-    otpShowError('Invalid or expired OTP. Try again or resend.');
+    let msg = e.message || 'Invalid OTP.';
+    if(msg.includes('expired')) msg = 'OTP has expired. Please resend.';
+    if(msg.includes('invalid') || msg.includes('Invalid')) msg = 'Incorrect OTP. Check the SMS and try again.';
+    otpShowError(msg);
     ['od1','od2','od3','od4','od5','od6'].forEach(id=>{
       const el=document.getElementById(id); if(el) el.value='';
     });
     document.getElementById('od1')?.focus();
   }finally{
-    if(btn){btn.disabled=false;btn.textContent='Verify OTP →';}
+    if(btn){ btn.disabled=false; btn.textContent='Verify OTP →'; }
   }
 }
 
 // Step 3: Set new password (user is authenticated after OTP verify)
 async function otpSetNewPassword(){
-  const p=(document.getElementById('otp-newpass')?.value||'');
-  const p2=(document.getElementById('otp-newpass2')?.value||'');
-  if(p.length<6){otpShowError('Password must be at least 6 characters.');return;}
-  if(p!==p2){otpShowError('Passwords do not match.');return;}
+  const p  = document.getElementById('otp-newpass')?.value  || '';
+  const p2 = document.getElementById('otp-newpass2')?.value || '';
+  if(p.length < 6){ otpShowError('Password must be at least 6 characters.'); return; }
+  if(p !== p2)    { otpShowError('Passwords do not match.'); return; }
+
   const btn=document.querySelector('#otp-s3 .login-btn');
-  if(btn){btn.disabled=true;btn.textContent='Saving…';}
+  if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
+
   try{
-    const {error}=await getSupa().auth.updateUser({password:p});
+    const {error} = await getSupa().auth.updateUser({password: p});
     if(error) throw new Error(error.message);
-    // Sign out the temp OTP session — user must login fresh with new password
     await getSupa().auth.signOut();
     closeOtpScreen();
     showToast('✅ Password reset successfully! Please log in with your new password.','#059669');
   }catch(e){
-    otpShowError('Failed to set password: '+e.message);
+    otpShowError('Failed to save password: '+(e.message||'Try again.'));
   }finally{
-    if(btn){btn.disabled=false;btn.textContent='🔐 Save New Password →';}
+    if(btn){ btn.disabled=false; btn.textContent='🔐 Save New Password →'; }
   }
 }
 
-// Resend OTP (with 60s cooldown)
+// Resend OTP — 60s cooldown
 async function otpResend(){
-  if(_otpState.resendCooldown>0){
-    otpShowError('Please wait '+_otpState.resendCooldown+'s before resending.');return;
+  if(_otpState.resendCooldown > 0){
+    otpShowError('Please wait '+_otpState.resendCooldown+'s before resending.');
+    return;
   }
-  _otpState.resendCooldown=60;
-  const cd=setInterval(()=>{
-    _otpState.resendCooldown--;
-    if(_otpState.resendCooldown<=0) clearInterval(cd);
-  },1000);
-  await otpSendSMS();
+  _otpState.resendCooldown = 60;
+  const cd = setInterval(()=>{ _otpState.resendCooldown--; if(_otpState.resendCooldown<=0) clearInterval(cd); }, 1000);
+  await otpSendStep1();
 }
 
-// Countdown timer display
+// Countdown timer
 function otpStartTimer(seconds){
   clearInterval(_otpState.timer);
-  let remaining=seconds;
-  const el=document.getElementById('otp-timer-val');
+  let remaining = seconds;
+  const el = document.getElementById('otp-timer-val');
   function tick(){
     if(!el) return;
     const m=Math.floor(remaining/60), s=remaining%60;
-    el.textContent=m+':'+(s<10?'0':'')+s;
+    el.textContent = m+':'+(s<10?'0':'')+s;
     if(remaining<=0){
       clearInterval(_otpState.timer);
       el.textContent='Expired';
@@ -7258,7 +7491,7 @@ function otpStartTimer(seconds){
     remaining--;
   }
   tick();
-  _otpState.timer=setInterval(tick,1000);
+  _otpState.timer = setInterval(tick, 1000);
 }
 
 </script>
