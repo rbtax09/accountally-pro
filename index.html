@@ -241,6 +241,113 @@ input[type=number]{-moz-appearance:textfield;}
 .otp-timer{font-size:11px;color:#64748b;text-align:center;margin-top:8px;}
 .otp-timer span{color:#3b82f6;font-weight:700;}
 
+
+/* ══════════════════════════════════════════
+   DATE RANGE PICKER — Modern UI
+══════════════════════════════════════════ */
+/* Trigger badge */
+.drp-badge{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:6px 14px;border-radius:22px;border:1.5px solid #e2e8f0;
+  background:linear-gradient(135deg,#f8fafc,#eff6ff);
+  cursor:pointer;font-family:var(--font);font-size:12px;font-weight:700;color:#1e40af;
+  transition:all .18s;white-space:nowrap;
+  box-shadow:0 2px 8px rgba(37,99,235,.08);
+}
+.drp-badge:hover{border-color:#3b82f6;background:linear-gradient(135deg,#eff6ff,#dbeafe);box-shadow:0 4px 16px rgba(37,99,235,.16);transform:translateY(-1px);}
+.drp-cal-icon{font-size:14px;}
+.drp-arrow{font-size:10px;color:#64748b;transition:transform .2s;}
+.drp-arrow{transition:transform .2s ease;}
+
+/* Dropdown panel */
+.drp-panel{
+  position:fixed;z-index:99999;
+  width:460px;background:#fff;border-radius:20px;
+  border:1px solid #e2e8f0;
+  box-shadow:0 24px 64px rgba(15,23,42,.18),0 4px 16px rgba(0,0,0,.08);
+  animation:drpIn .18s cubic-bezier(.34,1.3,.64,1);
+  overflow:hidden;
+}
+@keyframes drpIn{from{opacity:0;transform:translateY(-10px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+/* Panel header */
+.drp-panel-hdr{
+  padding:14px 20px 12px;
+  font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;
+  color:#64748b;background:#f8fafc;
+  border-bottom:1px solid #e2e8f0;
+  border-radius:20px 20px 0 0;
+}
+
+/* Preset chips row */
+.drp-presets{
+  display:flex;flex-wrap:wrap;gap:7px;
+  padding:14px 18px 8px;background:#fff;
+}
+.drp-chip{
+  padding:5px 13px;border-radius:20px;border:1.5px solid #e2e8f0;
+  background:#fff;font-size:11px;font-weight:700;color:#475569;
+  cursor:pointer;font-family:var(--font);transition:all .15s;
+}
+.drp-chip:hover{background:#2563eb;border-color:#2563eb;color:#fff;transform:translateY(-1px);box-shadow:0 4px 12px rgba(37,99,235,.25);}
+.drp-chip.active{background:#2563eb;border-color:#2563eb;color:#fff;}
+
+/* Divider */
+.drp-divider{
+  display:flex;align-items:center;gap:10px;
+  padding:4px 18px;margin:4px 0;
+}
+.drp-divider::before,.drp-divider::after{content:'';flex:1;height:1px;background:#e2e8f0;}
+.drp-divider span{font-size:10px;color:#94a3b8;font-weight:600;letter-spacing:.5px;white-space:nowrap;}
+
+/* Date inputs row */
+.drp-inputs{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 18px 14px;
+}
+.drp-field{flex:1;display:flex;flex-direction:column;gap:5px;}
+.drp-lbl{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;}
+.drp-inp-wrap{
+  position:relative;display:flex;align-items:center;
+  background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:12px;
+  overflow:hidden;transition:border .15s,box-shadow .15s;
+}
+.drp-inp-wrap:focus-within{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.12);background:#fff;}
+.drp-inp-icon{padding:0 10px;font-size:14px;pointer-events:none;}
+.drp-inp{
+  flex:1;padding:10px 12px 10px 0;
+  border:none;background:transparent;font-size:13px;font-weight:600;
+  color:#1e293b;font-family:var(--font);outline:none;min-width:0;
+  cursor:pointer;
+}
+.drp-inp::-webkit-calendar-picker-indicator{
+  opacity:.6;cursor:pointer;
+  filter:invert(40%) sepia(80%) saturate(400%) hue-rotate(200deg);
+}
+.drp-sep{
+  font-size:18px;color:#cbd5e1;font-weight:300;
+  padding-top:18px;flex-shrink:0;
+}
+
+/* Footer */
+.drp-footer{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 18px;background:#f8fafc;border-top:1px solid #e2e8f0;
+}
+.drp-info{font-size:11px;color:#94a3b8;font-weight:600;}
+.drp-cancel{
+  padding:8px 16px;border-radius:10px;border:1.5px solid #e2e8f0;
+  background:#fff;font-size:12px;font-weight:600;color:#64748b;
+  cursor:pointer;font-family:var(--font);transition:all .15s;
+}
+.drp-cancel:hover{background:#f1f5f9;color:#334155;}
+.drp-apply{
+  padding:8px 20px;border-radius:10px;border:none;
+  background:linear-gradient(135deg,#1d4ed8,#3b82f6);
+  font-size:12px;font-weight:700;color:#fff;
+  cursor:pointer;font-family:var(--font);transition:all .15s;
+  box-shadow:0 4px 12px rgba(37,99,235,.3);
+}
+.drp-apply:hover{background:linear-gradient(135deg,#1e40af,#2563eb);transform:translateY(-1px);box-shadow:0 6px 18px rgba(37,99,235,.4);}
 </style>
 </head>
 <body>
@@ -1479,7 +1586,10 @@ function exportMultiXLS(sheets,file){
 // ══════════════════════════════════════════════════════════════════
 //  PAGE: DASHBOARD
 // ══════════════════════════════════════════════════════════════════
-let dashFilter='monthly';
+let dashFilter='monthly'; // kept for legacy refs
+let dashFromDate=''; // YYYY-MM-DD
+let dashToDate='';   // YYYY-MM-DD
+let dashPickerOpen=false;
 let _dashCharts={};
 
 function destroyDashCharts(){
@@ -1488,6 +1598,9 @@ function destroyDashCharts(){
 }
 
 function pgDashboard(){
+  // Initialise date range to current FY if not yet set
+  if(!dashFromDate) dashFromDate=state.fyStart||'2025-04-01';
+  if(!dashToDate)   dashToDate  =state.fyEnd  ||'2026-03-31';
   destroyDashCharts();
   // ── FY-filtered computations for KPI cards ──
   const fyVouchers=state.vouchers.filter(v=>v.date>=state.fyStart&&v.date<=state.fyEnd);
@@ -1523,62 +1636,98 @@ function pgDashboard(){
 
   const recv=getReceivables(); const pay=getPayables();
 
-  // Expense breakdown by group
+  // Chart-range vouchers — respects the custom date range picker
+  const crVouchers=state.vouchers.filter(v=>v.date>=dashFromDate&&v.date<=dashToDate);
+
+  // Expense breakdown — date-range filtered
   const expGroups={};
-  Object.values(L).filter(a=>a.type==='Expense'&&a.closingDr>0).forEach(a=>{
-    expGroups[a.group]=(expGroups[a.group]||0)+a.closingDr;
+  crVouchers.forEach(v=>{
+    v.entries.forEach(e=>{
+      const a=accTypeMap[e.accId]||{};
+      if(a.type==='Expense'&&(e.dr||0)>0){
+        const grp=a.group||'Other Expenses';
+        expGroups[grp]=(expGroups[grp]||0)+(e.dr||0);
+      }
+    });
   });
-  const expLabels=Object.keys(expGroups);
-  const expVals=Object.values(expGroups);
+  const expFiltered=Object.entries(expGroups).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  const expLabels=expFiltered.map(([k])=>k);
+  const expVals=expFiltered.map(([,v])=>v);
 
-  // Income breakdown
+  // Income breakdown — date-range filtered
   const incGroups={};
-  Object.values(L).filter(a=>a.type==='Income'&&a.closingCr>0).forEach(a=>{
-    incGroups[a.group]=(incGroups[a.group]||0)+a.closingCr;
+  crVouchers.forEach(v=>{
+    v.entries.forEach(e=>{
+      const a=accTypeMap[e.accId]||{};
+      if(a.type==='Income'&&(e.cr||0)>0){
+        const grp=a.group||'Other Income';
+        incGroups[grp]=(incGroups[grp]||0)+(e.cr||0);
+      }
+    });
   });
-  const incLabels=Object.keys(incGroups);
-  const incVals=Object.values(incGroups);
+  const incFiltered=Object.entries(incGroups).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  const incLabels=incFiltered.map(([k])=>k);
+  const incVals=incFiltered.map(([,v])=>v);
 
 
-  // Cash flow trend — respects dashFilter (monthly/quarterly/yearly)
+  // Cash flow trend — uses same date range as Revenue vs Expenses chart
   const cfData=[];
   const cfLabels=[];
-  // Use account-type lookup: cash inflow = dr on Asset(Cash/Bank), outflow = cr on Asset(Cash/Bank)
-  // Simpler: sum net of Receipt vs Payment per period
   const cashBankAccIds=new Set(state.accounts.filter(a=>a.group==='Cash & Bank').map(a=>a.id));
-  function cfForPeriod(filterFn){
+  function cfForPeriod(s,e){
     let inflow=0,outflow=0;
-    state.vouchers.filter(filterFn).forEach(v=>{
-      v.entries.forEach(e=>{
-        if(cashBankAccIds.has(e.accId)){
-          inflow+=(e.dr||0);   // Cash/Bank debited = money coming in
-          outflow+=(e.cr||0);  // Cash/Bank credited = money going out
+    state.vouchers.filter(v=>v.date>=s&&v.date<=e).forEach(v=>{
+      v.entries.forEach(en=>{
+        if(cashBankAccIds.has(en.accId)){
+          inflow+=(en.dr||0);
+          outflow+=(en.cr||0);
         }
       });
     });
     return inflow-outflow;
   }
-  if(dashFilter==='monthly'){
-    for(let i=5;i>=0;i--){
-      const d=new Date(new Date().getFullYear(),new Date().getMonth()-i,1);
-      const yr=d.getFullYear(),mo=String(d.getMonth()+1).padStart(2,'0');
-      cfLabels.push(d.toLocaleString('en-IN',{month:'short'})+"'"+String(yr).slice(2));
-      cfData.push(cfForPeriod(v=>v.date.startsWith(`${yr}-${mo}`)));
+  // Mirror granularity of buildTimeSeriesData
+  const cfFromD=new Date(dashFromDate), cfToD=new Date(dashToDate);
+  const cfDays=Math.round((cfToD-cfFromD)/(1000*60*60*24));
+  if(cfDays<=93){
+    const cur=new Date(cfFromD);
+    while(cur<=cfToD){
+      const wS=cur.toISOString().slice(0,10);
+      const wED=new Date(cur);wED.setDate(wED.getDate()+6);
+      const wE=wED>cfToD?cfToD.toISOString().slice(0,10):wED.toISOString().slice(0,10);
+      cfLabels.push(cur.getDate()+' '+cur.toLocaleString('en-IN',{month:'short'}));
+      cfData.push(cfForPeriod(wS,wE));
+      cur.setDate(cur.getDate()+7);
     }
-  }else if(dashFilter==='quarterly'){
-    const now=new Date();
-    for(let i=3;i>=0;i--){
-      const d=new Date(now.getFullYear(),now.getMonth()-i*3,1);
-      const yr=d.getFullYear(),qm=Math.floor(d.getMonth()/3);
-      const months=[(qm*3),(qm*3)+1,(qm*3)+2].map(m=>String(m+1).padStart(2,'0'));
-      cfLabels.push(`Q${qm+1}'${String(yr).slice(2)}`);
-      cfData.push(cfForPeriod(v=>months.some(m=>v.date.startsWith(`${yr}-${m}`))));
+  } else if(cfDays<=400){
+    const cur=new Date(cfFromD.getFullYear(),cfFromD.getMonth(),1);
+    const endMo=new Date(cfToD.getFullYear(),cfToD.getMonth()+1,0);
+    while(cur<=endMo){
+      const yr=cur.getFullYear(),mo=String(cur.getMonth()+1).padStart(2,'0');
+      cfLabels.push(cur.toLocaleString('en-IN',{month:'short'})+"'"+String(yr).slice(2));
+      const moStart=`${yr}-${mo}-01`;
+      const moEnd=new Date(yr,cur.getMonth()+1,0).toISOString().slice(0,10);
+      const rS=moStart<dashFromDate?dashFromDate:moStart;
+      const rE=moEnd>dashToDate?dashToDate:moEnd;
+      cfData.push(cfForPeriod(rS,rE));
+      cur.setMonth(cur.getMonth()+1);
     }
-  }else{
-    const yr=new Date().getFullYear();
-    for(let y=yr-2;y<=yr;y++){
-      cfLabels.push(String(y));
-      cfData.push(cfForPeriod(v=>v.date.startsWith(String(y))));
+  } else {
+    function fyOfDate(d){const dt=new Date(d);return dt.getMonth()>=3?dt.getFullYear():dt.getFullYear()-1;}
+    const fy1=fyOfDate(dashFromDate),fy2=fyOfDate(dashToDate);
+    for(let fy=fy1;fy<=fy2;fy++){
+      const quarters=[
+        {lbl:`Q1 ${fy}`,s:`${fy}-04-01`,e:`${fy}-06-30`},
+        {lbl:`Q2 ${fy}`,s:`${fy}-07-01`,e:`${fy}-09-30`},
+        {lbl:`Q3 ${fy}`,s:`${fy}-10-01`,e:`${fy}-12-31`},
+        {lbl:`Q4 ${fy}`,s:`${fy+1}-01-01`,e:`${fy+1}-03-31`}
+      ];
+      quarters.filter(q=>q.s<=dashToDate&&q.e>=dashFromDate).forEach(q=>{
+        const rS=q.s<dashFromDate?dashFromDate:q.s;
+        const rE=q.e>dashToDate?dashToDate:q.e;
+        cfLabels.push(q.lbl);
+        cfData.push(cfForPeriod(rS,rE));
+      });
     }
   }
 
@@ -1673,13 +1822,13 @@ function pgDashboard(){
   <div class="dash-section-title">📊 Financial Charts</div>
   <div class="dash-charts-row">
     <div class="chart-card">
-      <div class="chart-card-hdr">
+      <div class="chart-card-hdr" style="flex-wrap:wrap;gap:8px;">
         <span class="chart-card-title">📊 Revenue vs Expenses</span>
-        <div class="tg">
-          <button class="t ${dashFilter==='monthly'?'act':''}" onclick="dashFilter='monthly';pgDashboard()">Monthly</button>
-          <button class="t ${dashFilter==='quarterly'?'act':''}" onclick="dashFilter='quarterly';pgDashboard()">Quarterly</button>
-          <button class="t ${dashFilter==='yearly'?'act':''}" onclick="dashFilter='yearly';pgDashboard()">Yearly</button>
-        </div>
+        <button class="drp-badge" id="drp-badge-btn" onclick="toggleDatePicker(event)">
+          <span class="drp-cal-icon">📅</span>
+          <span id="drp-label">${fmtD(dashFromDate)} → ${fmtD(dashToDate)}</span>
+          <span class="drp-arrow" id="drp-arrow">▾</span>
+        </button>
       </div>
       <div class="chart-card-body"><canvas id="ch-rev" height="170"></canvas></div>
     </div>
@@ -1687,14 +1836,14 @@ function pgDashboard(){
       <div class="chart-card-hdr">
         <span class="chart-card-title">🍩 Expense Breakdown</span>
       </div>
-      <div class="chart-card-body" style="display:flex;align-items:center;justify-content:center;"><canvas id="ch-exp" height="180" width="280"></canvas></div>
+      <div class="chart-card-body" style="display:flex;align-items:center;justify-content:center;"><canvas id="ch-exp" height="200"></canvas></div>
     </div>
   </div>
 
   <div class="dash-charts-row2">
     <div class="chart-card">
       <div class="chart-card-hdr">
-        <span class="chart-card-title">📈 Cash Flow Trend (${dashFilter==="monthly"?"6 Months":dashFilter==="quarterly"?"4 Quarters":"3 Years"})</span>
+        <span class="chart-card-title">📈 Cash Flow Trend <span style="font-size:10px;font-weight:500;color:#94a3b8;">${fmtD(dashFromDate)} → ${fmtD(dashToDate)}</span></span>
       </div>
       <div class="chart-card-body"><canvas id="ch-cf" height="150"></canvas></div>
     </div>
@@ -1702,7 +1851,7 @@ function pgDashboard(){
       <div class="chart-card-hdr">
         <span class="chart-card-title">🥧 Income Breakdown</span>
       </div>
-      <div class="chart-card-body" style="display:flex;align-items:center;justify-content:center;"><canvas id="ch-inc" height="150" width="280"></canvas></div>
+      <div class="chart-card-body" style="display:flex;align-items:center;justify-content:center;"><canvas id="ch-inc" height="200"></canvas></div>
     </div>
   </div>
 
@@ -1749,16 +1898,28 @@ function pgDashboard(){
   const {labels:rLabels,income:rIncome,expense:rExpense}=buildTimeSeriesData();
   const ctxRev=document.getElementById('ch-rev');
   if(ctxRev){
+    const revAllZero=rIncome.every(v=>v===0)&&rExpense.every(v=>v===0);
     _dashCharts.rev=new Chart(ctxRev,{
       type:'bar',
       data:{
         labels:rLabels,
         datasets:[
-          {label:'Revenue / Income',data:rIncome,backgroundColor:'rgba(37,99,235,0.85)',borderRadius:6,borderSkipped:false},
-          {label:'Expenses',data:rExpense,backgroundColor:'rgba(239,68,68,0.85)',borderRadius:6,borderSkipped:false}
+          {label:'Revenue / Income',data:rIncome,backgroundColor:'rgba(37,99,235,0.85)',borderRadius:5,borderSkipped:false,maxBarThickness:40},
+          {label:'Expenses',data:rExpense,backgroundColor:'rgba(239,68,68,0.85)',borderRadius:5,borderSkipped:false,maxBarThickness:40}
         ]
       },
-      options:{...JSON.parse(JSON.stringify(chartDefaults)),plugins:{...JSON.parse(JSON.stringify(chartDefaults)).plugins,tooltip:{callbacks:{label:ctx=>' ₹'+fmtN(ctx.raw)}}}}
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{labels:{font:{family:'IBM Plex Sans',size:11},usePointStyle:true}},
+          tooltip:{callbacks:{label:ctx=>' ₹'+fmtN(ctx.raw)}},
+          title:{display:revAllZero,text:'No transactions recorded for this period',color:'#94a3b8',font:{family:'IBM Plex Sans',size:12}}
+        },
+        scales:{
+          x:{grid:{display:false},ticks:{font:{family:'IBM Plex Sans',size:dashFilter==='monthly'?9:10},maxRotation:45,minRotation:dashFilter==='monthly'?30:0}},
+          y:{grid:{color:'#f1f5f9'},ticks:{font:{family:'IBM Plex Sans',size:10},callback:v=>v===0?'₹0':'₹'+fmtN(v/1000)+'k'},beginAtZero:true}
+        }
+      }
     });
   }
 
@@ -1772,13 +1933,14 @@ function pgDashboard(){
         labels:expLabels.length?expLabels:['No Expenses'],
         datasets:[{data:expVals.length?expVals:[1],backgroundColor:dColors.slice(0,Math.max(expVals.length,1)),borderWidth:2,borderColor:'#fff',hoverOffset:8}]
       },
-      options:{responsive:false,cutout:'65%',plugins:{legend:{position:'bottom',labels:{font:{family:'IBM Plex Sans',size:10},usePointStyle:true,padding:8}},tooltip:{callbacks:{label:ctx=>' ₹'+fmtN(ctx.raw)}}}}
+      options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'bottom',labels:{font:{family:'IBM Plex Sans',size:10},usePointStyle:true,padding:8,boxWidth:10}},tooltip:{callbacks:{label:ctx=>{const total=ctx.dataset.data.reduce((a,b)=>a+b,0);const pct=total>0?((ctx.raw/total)*100).toFixed(1):0;return` ₹${fmtN(ctx.raw)} (${pct}%)`;}}},title:{display:!expVals.length||expVals.every(v=>v===0),text:'No expenses recorded this FY',color:'#94a3b8',font:{family:'IBM Plex Sans',size:11}}}}
     });
   }
 
   // 3. Cash flow line chart
   const ctxCf=document.getElementById('ch-cf');
   if(ctxCf){
+    const cfAllZero=cfData.every(v=>v===0);
     _dashCharts.cf=new Chart(ctxCf,{
       type:'line',
       data:{
@@ -1789,13 +1951,26 @@ function pgDashboard(){
           borderColor:'#2563eb',
           backgroundColor:'rgba(37,99,235,0.08)',
           borderWidth:2.5,
-          pointBackgroundColor:cfData.map(v=>v>=0?'#10b981':'#ef4444'),
+          pointBackgroundColor:cfData.map(v=>v>0?'#10b981':v<0?'#ef4444':'#94a3b8'),
+          pointBorderColor:'#fff',
+          pointBorderWidth:2,
           pointRadius:5,
           fill:true,
-          tension:0.35
+          tension:0.3
         }]
       },
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' ₹'+fmtN(ctx.raw)}}},scales:{x:{grid:{display:false},ticks:{font:{family:'IBM Plex Sans',size:10}}},y:{grid:{color:'#f1f5f9'},ticks:{font:{family:'IBM Plex Sans',size:10},callback:v=>'₹'+fmtN(v/1000)+'k'}}}}
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{display:false},
+          tooltip:{callbacks:{label:ctx=>' ₹'+fmtN(ctx.raw)}},
+          title:{display:cfAllZero,text:'No cash transactions in this period',color:'#94a3b8',font:{family:'IBM Plex Sans',size:12}}
+        },
+        scales:{
+          x:{grid:{display:false},ticks:{font:{family:'IBM Plex Sans',size:dashFilter==='monthly'?9:10},maxRotation:45,minRotation:dashFilter==='monthly'?30:0}},
+          y:{grid:{color:'#f1f5f9'},beginAtZero:true,ticks:{font:{family:'IBM Plex Sans',size:10},callback:v=>v===0?'₹0':'₹'+fmtN(v/1000)+'k'}}
+        }
+      }
     });
   }
 
@@ -1809,22 +1984,25 @@ function pgDashboard(){
         labels:incLabels.length?incLabels:['No Income'],
         datasets:[{data:incVals.length?incVals:[1],backgroundColor:pColors.slice(0,Math.max(incVals.length,1)),borderWidth:2,borderColor:'#fff',hoverOffset:8}]
       },
-      options:{responsive:false,plugins:{legend:{position:'bottom',labels:{font:{family:'IBM Plex Sans',size:10},usePointStyle:true,padding:8}},tooltip:{callbacks:{label:ctx=>' ₹'+fmtN(ctx.raw)}}}}
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{family:'IBM Plex Sans',size:10},usePointStyle:true,padding:8,boxWidth:10}},tooltip:{callbacks:{label:ctx=>{const total=ctx.dataset.data.reduce((a,b)=>a+b,0);const pct=total>0?((ctx.raw/total)*100).toFixed(1):0;return` ₹${fmtN(ctx.raw)} (${pct}%)`;}}},title:{display:!incVals.length||incVals.every(v=>v===0),text:'No income recorded this FY',color:'#94a3b8',font:{family:'IBM Plex Sans',size:11}}}}
     });
   }
 }
 
 function buildTimeSeriesData(){
-  // Use account-type lookup so ALL voucher types (Journal, Receipt, etc.) are captured
   const accType={};
   state.accounts.forEach(a=>{accType[a.id]=a.type;});
+
+  const fromD=new Date(dashFromDate);
+  const toD  =new Date(dashToDate);
+  const days =Math.round((toD-fromD)/(1000*60*60*24));
 
   function getIncExp(filterFn){
     let s=0,e=0;
     state.vouchers.filter(filterFn).forEach(v=>{
       v.entries.forEach(en=>{
         const t=accType[en.accId];
-        if(t==='Income'&&(en.cr||0)>0) s+=(en.cr||0);
+        if(t==='Income' &&(en.cr||0)>0) s+=(en.cr||0);
         if(t==='Expense'&&(en.dr||0)>0) e+=(en.dr||0);
       });
     });
@@ -1832,34 +2010,51 @@ function buildTimeSeriesData(){
   }
 
   const labels=[],income=[],expense=[];
-  if(dashFilter==='monthly'){
-    for(let i=5;i>=0;i--){
-      const d=new Date(new Date().getFullYear(),new Date().getMonth()-i,1);
-      const yr=d.getFullYear(),mo=String(d.getMonth()+1).padStart(2,'0');
-      labels.push(d.toLocaleString('en-IN',{month:'short'})+"'"+String(yr).slice(2));
-      const{s,e}=getIncExp(v=>v.date.startsWith(`${yr}-${mo}`));
+
+  if(days<=93){
+    // ── Weekly buckets ──────────────────────────────────────────
+    const cur=new Date(fromD);
+    while(cur<=toD){
+      const wkStart=cur.toISOString().slice(0,10);
+      const wkEndD=new Date(cur); wkEndD.setDate(wkEndD.getDate()+6);
+      const wkEnd=wkEndD>toD?toD.toISOString().slice(0,10):wkEndD.toISOString().slice(0,10);
+      labels.push(cur.getDate()+' '+cur.toLocaleString('en-IN',{month:'short'}));
+      const{s,e}=getIncExp(v=>v.date>=wkStart&&v.date<=wkEnd);
       income.push(s); expense.push(e);
+      cur.setDate(cur.getDate()+7);
     }
-  }else if(dashFilter==='quarterly'){
-    const now=new Date();
-    for(let i=3;i>=0;i--){
-      const d=new Date(now.getFullYear(),now.getMonth()-i*3,1);
-      const yr=d.getFullYear(),qm=Math.floor(d.getMonth()/3);
-      const months=[(qm*3),(qm*3)+1,(qm*3)+2].map(m=>String(m+1).padStart(2,'0'));
-      labels.push(`Q${qm+1}'${String(yr).slice(2)}`);
-      const{s,e}=getIncExp(v=>months.some(m=>v.date.startsWith(`${yr}-${m}`)));
+  } else if(days<=400){
+    // ── Monthly buckets ─────────────────────────────────────────
+    const cur=new Date(fromD.getFullYear(),fromD.getMonth(),1);
+    const endMo=new Date(toD.getFullYear(),toD.getMonth()+1,0);
+    while(cur<=endMo){
+      const yr=cur.getFullYear(), mo=String(cur.getMonth()+1).padStart(2,'0');
+      labels.push(cur.toLocaleString('en-IN',{month:'short'})+"'"+String(yr).slice(2));
+      const{s,e}=getIncExp(v=>v.date.startsWith(`${yr}-${mo}`)&&v.date>=dashFromDate&&v.date<=dashToDate);
       income.push(s); expense.push(e);
+      cur.setMonth(cur.getMonth()+1);
     }
-  }else{
-    // Show last 3 financial years (Apr-Mar)
-    const baseFY=parseInt(state.fy||new Date().getFullYear()+'-'+(new Date().getFullYear()+1).toString().slice(2));
-    for(let offset=2;offset>=0;offset--){
-      const fyStart=`${baseFY-offset}-04-01`;
-      const fyEnd=`${baseFY-offset+1}-03-31`;
-      labels.push(`FY ${baseFY-offset}-${String(baseFY-offset+1).slice(2)}`);
-      const{s,e}=getIncExp(v=>v.date>=fyStart&&v.date<=fyEnd);
+  } else {
+    // ── Quarterly (Indian FY) buckets ───────────────────────────
+    // Determine FY years covered
+    function fyOfDate(d){
+      const dt=new Date(d); return dt.getMonth()>=3?dt.getFullYear():dt.getFullYear()-1;
+    }
+    const fy1=fyOfDate(dashFromDate), fy2=fyOfDate(dashToDate);
+    const quarters=[];
+    for(let fy=fy1;fy<=fy2;fy++){
+      quarters.push({lbl:`Q1 ${fy}-${String(fy+1).slice(2)}`,s:`${fy}-04-01`,e:`${fy}-06-30`});
+      quarters.push({lbl:`Q2 ${fy}-${String(fy+1).slice(2)}`,s:`${fy}-07-01`,e:`${fy}-09-30`});
+      quarters.push({lbl:`Q3 ${fy}-${String(fy+1).slice(2)}`,s:`${fy}-10-01`,e:`${fy}-12-31`});
+      quarters.push({lbl:`Q4 ${fy}-${String(fy+1).slice(2)}`,s:`${fy+1}-01-01`,e:`${fy+1}-03-31`});
+    }
+    quarters.filter(q=>q.s<=dashToDate&&q.e>=dashFromDate).forEach(q=>{
+      const rS=q.s<dashFromDate?dashFromDate:q.s;
+      const rE=q.e>dashToDate  ?dashToDate  :q.e;
+      labels.push(q.lbl);
+      const{s,e}=getIncExp(v=>v.date>=rS&&v.date<=rE);
       income.push(s); expense.push(e);
-    }
+    });
   }
   return{labels,income,expense};
 }
@@ -7492,6 +7687,236 @@ function otpStartTimer(seconds){
   }
   tick();
   _otpState.timer = setInterval(tick, 1000);
+}
+
+
+// ══════════════════════════════════════════════════════════════════════
+// DATE RANGE PICKER — Rebuilt (body-level panel, escapes overflow:hidden)
+// ══════════════════════════════════════════════════════════════════════
+let _drpEl=null; // cached panel DOM reference
+
+function _buildDrpPanel(){
+  // Remove old if exists
+  const old=document.getElementById('drp-panel');
+  if(old) old.remove();
+
+  const panel=document.createElement('div');
+  panel.id='drp-panel';
+  panel.className='drp-panel';
+  panel.style.cssText='display:none;position:fixed;z-index:99999;';
+  panel.onclick=e=>e.stopPropagation();
+
+  panel.innerHTML=`
+    <div class="drp-panel-hdr">📅 Date Range Filter</div>
+    <div class="drp-presets">
+      <button class="drp-chip" data-preset="thisfy">This FY</button>
+      <button class="drp-chip" data-preset="lastfy">Last FY</button>
+      <button class="drp-chip" data-preset="thismonth">This Month</button>
+      <button class="drp-chip" data-preset="lastmonth">Last Month</button>
+      <button class="drp-chip" data-preset="last3m">Last 3M</button>
+      <button class="drp-chip" data-preset="last6m">Last 6M</button>
+      <button class="drp-chip" data-preset="q1">Q1 Apr–Jun</button>
+      <button class="drp-chip" data-preset="q2">Q2 Jul–Sep</button>
+      <button class="drp-chip" data-preset="q3">Q3 Oct–Dec</button>
+      <button class="drp-chip" data-preset="q4">Q4 Jan–Mar</button>
+    </div>
+    <div class="drp-divider"><span>or pick custom range</span></div>
+    <div class="drp-inputs">
+      <div class="drp-field">
+        <label class="drp-lbl">From</label>
+        <div class="drp-inp-wrap">
+          <span class="drp-inp-icon">📅</span>
+          <input type="date" id="drp-from" class="drp-inp" onchange="_drpUpdateInfo()">
+        </div>
+      </div>
+      <div class="drp-sep">→</div>
+      <div class="drp-field">
+        <label class="drp-lbl">To</label>
+        <div class="drp-inp-wrap">
+          <span class="drp-inp-icon">📅</span>
+          <input type="date" id="drp-to" class="drp-inp" onchange="_drpUpdateInfo()">
+        </div>
+      </div>
+    </div>
+    <div class="drp-footer">
+      <span id="drp-range-info" class="drp-info"></span>
+      <div style="display:flex;gap:8px;">
+        <button class="drp-cancel" onclick="closeDatePicker()">Cancel</button>
+        <button class="drp-apply" onclick="applyDateRange()">Apply Filter ✓</button>
+      </div>
+    </div>`;
+
+  // Wire up preset chips (avoids event.currentTarget issues)
+  panel.querySelectorAll('.drp-chip[data-preset]').forEach(btn=>{
+    btn.addEventListener('click',function(){
+      _applyPresetAndUpdate(this.dataset.preset, this);
+    });
+  });
+
+  document.body.appendChild(panel);
+  _drpEl=panel;
+  return panel;
+}
+
+function toggleDatePicker(e){
+  e.stopPropagation();
+  let panel=document.getElementById('drp-panel');
+  if(panel&&panel.style.display==='block'){
+    closeDatePicker(); return;
+  }
+  if(!panel) panel=_buildDrpPanel();
+
+  // Sync current values
+  panel.querySelector('#drp-from').value=dashFromDate;
+  panel.querySelector('#drp-to').value=dashToDate;
+  _drpUpdateInfo();
+  _drpMarkActivePreset();
+
+  // Position below the badge using fixed coordinates
+  const badge=document.getElementById('drp-badge-btn');
+  if(badge){
+    const r=badge.getBoundingClientRect();
+    const vw=window.innerWidth;
+    panel.style.display='block';
+    // Try right-aligned first, fall back to left if overflow
+    const panelW=460;
+    let left=r.right-panelW;
+    if(left<8) left=r.left;
+    if(left+panelW>vw-8) left=vw-panelW-8;
+    panel.style.top =(r.bottom+6)+'px';
+    panel.style.left=Math.max(8,left)+'px';
+    panel.style.right='auto';
+  } else {
+    panel.style.display='block';
+    panel.style.top='80px';
+    panel.style.right='20px';
+    panel.style.left='auto';
+  }
+
+  const arrow=document.getElementById('drp-arrow');
+  if(arrow) arrow.style.transform='rotate(180deg)';
+
+  setTimeout(()=>document.addEventListener('click',_drpOutsideClick),0);
+}
+
+function _drpOutsideClick(e){
+  const panel=document.getElementById('drp-panel');
+  const badge=document.getElementById('drp-badge-btn');
+  if(panel&&!panel.contains(e.target)&&(!badge||!badge.contains(e.target))){
+    closeDatePicker();
+  }
+}
+
+function closeDatePicker(){
+  const panel=document.getElementById('drp-panel');
+  if(panel) panel.style.display='none';
+  const arrow=document.getElementById('drp-arrow');
+  if(arrow) arrow.style.transform='';
+  document.removeEventListener('click',_drpOutsideClick);
+}
+
+function _drpUpdateInfo(){
+  const from=document.getElementById('drp-from')?.value;
+  const to  =document.getElementById('drp-to')?.value;
+  const info=document.getElementById('drp-range-info');
+  if(!info) return;
+  if(from&&to){
+    const d1=new Date(from),d2=new Date(to);
+    if(d2>=d1){
+      const days=Math.round((d2-d1)/(86400000))+1;
+      const gran=days<=93?'Weekly buckets':days<=400?'Monthly buckets':'Quarterly buckets';
+      info.textContent=days+' days · '+gran;
+      info.style.color='#2563eb';
+    } else {
+      info.textContent='⚠ End date must be after start';
+      info.style.color='#dc2626';
+    }
+  } else {
+    info.textContent='';
+  }
+}
+// Legacy alias
+function updateDateLabel(){ _drpUpdateInfo(); }
+
+function _drpMarkActivePreset(){
+  const panel=document.getElementById('drp-panel');
+  if(!panel) return;
+  panel.querySelectorAll('.drp-chip').forEach(c=>c.classList.remove('active'));
+}
+
+function _applyPresetAndUpdate(preset, chipEl){
+  const now=new Date();
+  const fy=parseInt(state.fy)||now.getFullYear();
+  let from='', to='';
+
+  if(preset==='thisfy'){
+    from=fy+'-04-01'; to=(fy+1)+'-03-31';
+  } else if(preset==='thismonth'){
+    const yr=now.getFullYear(), mo=String(now.getMonth()+1).padStart(2,'0');
+    from=yr+'-'+mo+'-01';
+    to=new Date(yr,now.getMonth()+1,0).toISOString().slice(0,10);
+  } else if(preset==='lastmonth'){
+    from=new Date(now.getFullYear(),now.getMonth()-1,1).toISOString().slice(0,10);
+    to  =new Date(now.getFullYear(),now.getMonth(),0).toISOString().slice(0,10);
+  } else if(preset==='last3m'){
+    const d=new Date(now); d.setMonth(d.getMonth()-3);
+    from=d.toISOString().slice(0,10); to=now.toISOString().slice(0,10);
+  } else if(preset==='last6m'){
+    const d=new Date(now); d.setMonth(d.getMonth()-6);
+    from=d.toISOString().slice(0,10); to=now.toISOString().slice(0,10);
+  } else if(preset==='q1'){
+    // Q1: Apr–Jun of current Indian FY
+    const qfy=parseInt(state.fy)||now.getFullYear();
+    from=qfy+'-04-01'; to=qfy+'-06-30';
+  } else if(preset==='q2'){
+    // Q2: Jul–Sep of current Indian FY
+    const qfy=parseInt(state.fy)||now.getFullYear();
+    from=qfy+'-07-01'; to=qfy+'-09-30';
+  } else if(preset==='q3'){
+    // Q3: Oct–Dec of current Indian FY
+    const qfy=parseInt(state.fy)||now.getFullYear();
+    from=qfy+'-10-01'; to=qfy+'-12-31';
+  } else if(preset==='q4'){
+    // Q4: Jan–Mar of current Indian FY (calendar year = FY start year + 1)
+    const qfy=(parseInt(state.fy)||now.getFullYear())+1;
+    from=qfy+'-01-01'; to=qfy+'-03-31';
+  } else if(preset==='lastfy'){
+    // Previous Indian FY: Apr–Mar
+    from=(fy-1)+'-04-01'; to=fy+'-03-31';
+  }
+
+  if(!from||!to) return;
+
+  // Highlight chip
+  const panel=document.getElementById('drp-panel');
+  if(panel) panel.querySelectorAll('.drp-chip').forEach(c=>c.classList.remove('active'));
+  if(chipEl) chipEl.classList.add('active');
+
+  // Update inputs
+  const fi=document.getElementById('drp-from');
+  const ti=document.getElementById('drp-to');
+  if(fi) fi.value=from;
+  if(ti) ti.value=to;
+  _drpUpdateInfo();
+
+  // Auto-apply immediately on preset click
+  dashFromDate=from;
+  dashToDate  =to;
+  closeDatePicker();
+  pgDashboard();
+}
+// Legacy alias for any old onclick="applyPreset(...)"
+function applyPreset(preset){ _applyPresetAndUpdate(preset,null); }
+
+function applyDateRange(){
+  const from=document.getElementById('drp-from')?.value;
+  const to  =document.getElementById('drp-to')?.value;
+  if(!from||!to){ alert('Please select both From and To dates'); return; }
+  if(new Date(to)<new Date(from)){ alert('End date must be after start date'); return; }
+  dashFromDate=from;
+  dashToDate  =to;
+  closeDatePicker();
+  pgDashboard();
 }
 
 </script>
