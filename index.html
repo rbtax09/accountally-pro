@@ -639,11 +639,14 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 let supa = null;
 function getSupa(){
   if(!supa){
-    if(typeof supabase === 'undefined') throw new Error('Supabase library not loaded. Please check your internet connection.');
+    if(typeof supabase==='undefined'||typeof supabase.createClient==='undefined'){
+      throw new Error('App scripts still loading — please wait and refresh.');
+    }
     supa = supabase.createClient(SUPA_URL, SUPA_KEY);
   }
   return supa;
 }
+
 
 // ── v11: Supabase Auth — passwords managed by Supabase, NOT stored in DB ──
 // app_users: username, user_id (uuid→auth.users), company_id, role
@@ -806,11 +809,9 @@ async function showCompanySelectScreen(){
   // Show ➕ immediately — user is never stuck even if network is slow
   if(grid){grid.style.display='grid';grid.innerHTML=buildNewCoCard();}
   if(loading){loading.textContent='⏳ Loading companies…';loading.style.display='block';}
+  
   try{
-    const {data,error}=await Promise.race([
-      getSupa().from('companies_registry').select('*').order('created_at',{ascending:true}),
-      new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),6000))
-    ]);
+    const {data,error}=await getSupa().from('companies_registry').select('*').order('created_at',{ascending:true});
     if(loading)loading.style.display='none';
     if(error)throw error;
     if(data&&data.length>0){
@@ -818,7 +819,7 @@ async function showCompanySelectScreen(){
       if(grid)grid.innerHTML=companies.map((co,i)=>buildCoCard(co,i)).join('')+buildNewCoCard();
     }
   }catch(e){
-    if(loading){loading.textContent='⚠️ '+e.message;loading.style.display='block';}
+    if(loading){loading.textContent='⚠️ '+e.message+' — Refresh page.';loading.style.display='block';}
     console.warn('Company list error:',e.message);
   }
 }
